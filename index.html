@@ -4,311 +4,480 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>招金 線上點餐</title>
-  <meta name="color-scheme" content="light">
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Day.js -->
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
-  <script>
-    dayjs.extend(dayjs_plugin_utc);
-    dayjs.extend(dayjs_plugin_timezone);
-    dayjs.tz.setDefault("Asia/Taipei");
-  </script>
-
+  <meta name="color-scheme" content="light">
   <style>
-    .card{border-radius:1rem}
-    .btn{border-radius:1rem}
-    .container-slim{max-width:1100px}
-    .mono{font-variant-numeric: tabular-nums}
+    .card{border-radius:1rem}.btn{border-radius:1rem}.badge{border-radius:999px}
+    .container-slim{max-width:1200px}.mono{font-variant-numeric:tabular-nums}
+    input,select,textarea,option,button{color-scheme:light}
+    input,select,textarea{background:#fff!important;color:#0f172a!important;-webkit-text-fill-color:#0f172a;border-color:#cbd5e1}
+    select option{background:#fff;color:#0f172a}
+    .scroll-y{overflow-y:auto;-webkit-overflow-scrolling:touch}
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-  <header class="bg-white/80 backdrop-blur sticky top-0 border-b border-slate-200">
-    <div class="container-slim mx-auto px-4 py-3 flex items-center justify-between">
-      <h1 class="text-xl md:text-2xl font-bold">招金 線上點餐</h1>
-      <span class="text-sm text-slate-600">每日限量，請提早預訂</span>
+
+<body class="bg-slate-50 text-slate-900 selection:bg-slate-200 selection:text-slate-900">
+<header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+  <div class="mx-auto container-slim px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-slate-900 text-white rounded-xl grid place-items-center text-lg font-bold select-none">招</div>
+      <div>
+        <div class="text-xl font-semibold">招金 線上點餐</div>
+        <div class="text-xs text-slate-500">營業時間: 11:00 - 19:00</div>
+      </div>
     </div>
-  </header>
+    <a href="#cart" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">購物車</a>
+  </div>
+</header>
 
-  <main class="container-slim mx-auto p-4">
-    <!-- 顧客資訊 -->
-    <section class="card bg-white shadow p-4 mb-4">
-      <h2 class="text-lg font-semibold mb-3">顧客資訊</h2>
-      <div class="grid md:grid-cols-2 gap-4">
-        <label class="block">
-          <span class="text-sm text-slate-700">姓名</span>
-          <input id="name" type="text" class="mt-1 border rounded w-full p-2" placeholder="請輸入姓名">
-        </label>
-        <label class="block">
-          <span class="text-sm text-slate-700">電話</span>
-          <input id="phone" type="tel" class="mt-1 border rounded w-full p-2" placeholder="請輸入電話">
-        </label>
-      </div>
-    </section>
-
-    <!-- 餐點選擇 -->
-    <section class="card bg-white shadow p-4 mb-4">
-      <h2 class="text-lg font-semibold mb-3">餐點選擇</h2>
-
-      <div class="grid md:grid-cols-2 gap-4">
-        <label class="block">
-          <span class="text-sm text-slate-700">主餐</span>
-          <select id="main" class="mt-1 border rounded w-full p-2">
-            <option value="">請選擇主餐</option>
-            <option>照燒雞腿丼</option>
-            <option>招金牛肉丼</option>
-            <option>蒜香豬排便當</option>
-            <option>主廚特製魚排</option>
-          </select>
-        </label>
-
-        <label class="block">
-          <span class="text-sm text-slate-700">加購</span>
-          <select id="side" class="mt-1 border rounded w-full p-2">
-            <option value="">無</option>
-            <option>味噌湯 +$20</option>
-            <option>飲料 +$30</option>
-            <option>小菜拼盤 +$40</option>
-          </select>
-        </label>
-
-        <label class="block">
-          <span class="text-sm text-slate-700">份數</span>
-          <input id="qty" type="number" min="1" value="1" class="mt-1 border rounded w-full p-2 mono">
-        </label>
-
-        <div class="hidden md:block"></div>
-
-        <label class="block md:col-span-2">
-          <span class="text-sm text-slate-700">備註</span>
-          <textarea id="note" rows="2" class="mt-1 border rounded w-full p-2" placeholder="例如：飯少一點、醬多一點、去蔥"></textarea>
-        </label>
-      </div>
-    </section>
-
-    <!-- 取餐時間 -->
-    <section class="card bg-white shadow p-4 mb-4">
-      <h2 class="text-lg font-semibold mb-2">取餐時間</h2>
-      <div class="grid md:grid-cols-3 gap-4">
-        <label class="block">
-          <span class="text-sm text-slate-700">日期</span>
-          <input id="date" type="date" class="mt-1 border rounded w-full p-2">
-        </label>
-        <label class="block md:col-span-2">
-          <span class="text-sm text-slate-700">時段</span>
-          <select id="pickup" class="mt-1 border rounded w-full p-2">
-            <option value="">請選擇時間</option>
-          </select>
-        </label>
-      </div>
-      <p class="text-xs text-slate-500 mt-2">可選時段：11:00 至 19:00（整點）。若當日已過的時段將自動禁用。</p>
-    </section>
-
-    <!-- 訂單確認 -->
-    <section class="card bg-white shadow p-4 mb-4">
-      <h2 class="text-lg font-semibold mb-2">訂單確認</h2>
-      <div id="preview" class="text-sm text-slate-700 space-y-1">
-        <p>請填寫資料，上方資訊會即時顯示在此處作為確認。</p>
-      </div>
-    </section>
-
-    <!-- 送出 -->
-    <div class="mb-8">
-      <button id="submit" class="btn bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full py-3">送出訂單</button>
-      <p id="msg" class="text-center text-sm text-slate-700 mt-3"></p>
+<main class="mx-auto container-slim px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <section class="lg:col-span-2 space-y-8">
+    <div class="space-y-3">
+      <h2 class="text-lg font-semibold">丼飯</h2>
+      <div id="donList" class="grid grid-cols-2 gap-4"></div>
     </div>
-  </main>
+    <div class="space-y-3">
+      <h2 class="text-lg font-semibold">便當</h2>
+      <div id="bentoList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+    <div class="space-y-3">
+      <h2 class="text-lg font-semibold">主廚特餐</h2>
+      <div id="specialList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+    <div class="space-y-3">
+      <h2 class="text-lg font-semibold">單點 / 加購</h2>
+      <div id="sidesList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+    <div class="space-y-3">
+      <h2 class="text-lg font-semibold">湯品 / 飲料</h2>
+      <div id="drinkList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+  </section>
 
-  <!-- 前端設定：請放置 web/config.js 並提供 APP_CONFIG -->
-  <script src="./config.js"></script>
-  <script>
-    // 基本設定
-    const cfg = window.APP_CONFIG || {};
-    const API_URL = cfg.API_URL;
-    const API_KEY = cfg.API_KEY;
+  <aside id="cart"
+    class="space-y-6 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-1"
+    style="-webkit-overflow-scrolling: touch;">
+    <div class="card bg-white p-5">
+      <h2 class="text-lg font-semibold mb-4">購物車</h2>
+      <div id="cartItems" class="space-y-3"></div>
+      <div class="border-t pt-4 mt-4 flex items-center justify-between text-lg font-semibold">
+        <div>總計</div>
+        <div id="cartTotal" class="mono">$0</div>
+      </div>
+      <button id="clearCart" class="mt-3 w-full btn px-4 py-2 border border-slate-300 hover:bg-slate-100">清空購物車</button>
+    </div>
 
-    // DOM 快取
-    const $ = (id) => document.getElementById(id);
-    const nameEl = $('name');
-    const phoneEl = $('phone');
-    const mainEl = $('main');
-    const sideEl = $('side');
-    const qtyEl = $('qty');
-    const noteEl = $('note');
-    const dateEl = $('date');
-    const pickupEl = $('pickup');
-    const previewEl = $('preview');
-    const submitBtn = $('submit');
-    const msgEl = $('msg');
-
-    // 產生今天日期預設值，且不允許選過去日期
-    const today = dayjs().format('YYYY-MM-DD');
-    dateEl.value = today;
-    dateEl.min = today;
-
-    // 產生時段（11:00~19:00 整點）
-    function populateTimes() {
-      pickupEl.innerHTML = '<option value="">請選擇時間</option>';
-      const selectedDate = dayjs.tz(dateEl.value, 'Asia/Taipei');
-      for (let h = 11; h <= 19; h++) {
-        const t = selectedDate.hour(h).minute(0).second(0).millisecond(0);
-        const label = t.format('HH:mm');
-        const opt = document.createElement('option');
-        opt.value = label;
-        opt.textContent = label;
-
-        // 若是今天且該時段已過，直接禁用
-        const now = dayjs();
-        if (selectedDate.isSame(now, 'day')) {
-          if (t.isBefore(now)) {
-            opt.disabled = true;
-            opt.textContent = `${label}（已過）`;
-          }
-        }
-        pickupEl.appendChild(opt);
-      }
-    }
-    populateTimes();
-
-    dateEl.addEventListener('change', populateTimes);
-
-    // 預覽區塊
-    function renderPreview() {
-      const name = nameEl.value.trim() || '—';
-      const phone = phoneEl.value.trim() || '—';
-      const main = mainEl.value || '—';
-      const side = sideEl.value || '—';
-      const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
-      const note = noteEl.value.trim() || '—';
-      const d = dateEl.value || today;
-      const p = pickupEl.value || '—';
-
-      previewEl.innerHTML = `
-        <div class="grid md:grid-cols-2 gap-x-6 gap-y-1">
-          <p><span class="text-slate-500">姓名：</span>${escapeHtml(name)}</p>
-          <p><span class="text-slate-500">電話：</span>${escapeHtml(phone)}</p>
-          <p><span class="text-slate-500">主餐：</span>${escapeHtml(main)}</p>
-          <p><span class="text-slate-500">加購：</span>${escapeHtml(side)}</p>
-          <p><span class="text-slate-500">份數：</span><span class="mono">${qty}</span></p>
-          <p><span class="text-slate-500">備註：</span>${escapeHtml(note)}</p>
-          <p><span class="text-slate-500">日期：</span>${escapeHtml(d)}</p>
-          <p><span class="text-slate-500">取餐時間：</span>${escapeHtml(p)}</p>
+    <div class="card bg-white p-5">
+      <h2 class="text-lg font-semibold mb-4">取餐資訊</h2>
+      <form id="checkoutForm" class="space-y-4" autocomplete="off">
+        <div>
+          <label class="text-sm text-slate-600">姓名</label>
+          <input required id="customerName" type="text"
+                 class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900" />
         </div>
-      `;
-    }
-    ['input','change'].forEach(evt=>{
-      [nameEl, phoneEl, mainEl, sideEl, qtyEl, noteEl, dateEl, pickupEl].forEach(el=>{
-        el.addEventListener(evt, renderPreview);
-      });
+        <div>
+          <label class="text-sm text-slate-600">電話</label>
+          <input required id="customerPhone" type="tel" pattern="[0-9\-+\s]{8,}" placeholder="09xx-xxx-xxx"
+                 class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900" />
+        </div>
+        <button type="submit" class="w-full btn px-4 py-3 bg-slate-900 text-white hover:bg-slate-800">送出訂單</button>
+        <p id="formError" class="text-sm text-red-600"></p>
+      </form>
+    </div>
+  </aside>
+</main>
+
+<!-- 公告視窗（可自行調整或移除） -->
+<div id="noticeModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative z-10 mx-auto mt-20 w-[92%] max-w-xl card bg-white p-6">
+    <h3 class="text-xl font-semibold">公告</h3>
+    <ul class="mt-3 list-disc pl-5 space-y-2 text-slate-800">
+      <li>外帶為主，取餐時間為預估，依現場為準。</li>
+      <li>建議先預訂以避免久候。</li>
+    </ul>
+    <div class="mt-5 flex justify-end gap-3">
+      <button id="closeNotice" class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- 成功視窗（顯示訂單編號 + 同步狀態） -->
+<div id="successModal" class="fixed inset-0 z-40 hidden">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative z-10 mx-auto mt-24 w-[92%] max-w-xl card bg-white p-6">
+    <h3 class="text-xl font-semibold mb-2">下單成功</h3>
+    <p class="text-slate-700">訂單編號：</p>
+    <p id="displayNoText" class="text-3xl font-extrabold tracking-wider mt-1 mono"></p>
+    <p id="syncStatusText" class="text-slate-700 mt-3"></p>
+    <div class="mt-4 flex justify-end">
+      <button id="closeSuccess" class="btn px-4 py-2 border border-slate-300 hover:bg-slate-100">關閉</button>
+    </div>
+  </div>
+</div>
+
+<footer class="border-t border-slate-200 mt-12">
+  <div class="mx-auto container-slim px-4 py-6 text-sm text-slate-600">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>© <span id="year"></span> 招金</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* === 只需改這兩個設定（你的 GAS 部署網址 / API Key）=== */
+const ENDPOINT = 'https://script.google.com/macros/s/<<你的AppsScript部署ID>>/exec';
+const API_KEY  = 'steak';
+
+/* === 小工具 & 狀態 === */
+const el = s => document.querySelector(s);
+const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
+const state = { cart: [] };
+
+/* === 招金：可選項設定（可依實際菜單再調整）=== */
+const SAUCES  = ["照燒醬","燒烤醬","蒜香醬","胡麻醬","不加醬"];
+const STAPLES = ["白飯","十穀飯","+10 大飯","+10 烏龍麵（限特餐）"];
+const ADDONS  = [
+  { id:"加飯", price:10 },
+  { id:"溏心蛋", price:20 },
+  { id:"唐揚雞塊(3)", price:45 },
+  { id:"醬烤時蔬", price:35 }
+];
+
+/* === 招金菜單（你可自行增刪改名與價格）=== */
+const MENU = {
+  don: [ // 丼飯：預設不顯示主食選擇
+    { id:"don_teriyaki_chicken", name:"照燒雞腿丼", price:120, noStaple:true },
+    { id:"don_beef",             name:"招金牛肉丼", price:150, noStaple:true },
+    { id:"don_garlic_pork",      name:"蒜香豬肉丼", price:130, noStaple:true },
+    { id:"don_salmon",           name:"炙燒鮭魚丼", price:180, noStaple:true },
+  ],
+  bento: [ // 便當：可顯示主食選擇（飯類）
+    { id:"bento_pork_cutlet", name:"香煎豬排便當", price:130 },
+    { id:"bento_chicken_leg", name:"經典雞腿便當", price:140 },
+    { id:"bento_fish",        name:"主廚魚排便當", price:150 },
+  ],
+  special: [ // 主廚特餐：可顯示主食選擇（含烏龍麵）
+    { id:"sp_mix_grill",       name:"招金綜合燒肉餐", price:180 },
+    { id:"sp_omurice",         name:"厚蛋歐姆蛋飯",   price:150 },
+    { id:"sp_udon_teriyaki",   name:"照燒雞烏龍麵",   price:160 },
+  ],
+  sides: [
+    { id:"side_fried_tofu", name:"酥炸豆腐", price:40, noStaple:true },
+    { id:"side_salad",      name:"胡麻沙拉", price:45, noStaple:true },
+    { id:"side_cabbage",    name:"和風高麗菜", price:35, noStaple:true },
+  ],
+  drinks: [
+    { id:"drink_miso",  name:"味噌湯", price:20, noStaple:true },
+    { id:"drink_tea",   name:"無糖茶", price:25, noStaple:true },
+    { id:"drink_soda",  name:"氣泡飲", price:35, noStaple:true },
+  ],
+};
+
+/* === Render：分類卡片 === */
+function renderCategory(list, targetId){
+  const root = el(targetId); root.innerHTML='';
+  list.forEach(item=>{
+    const card=document.createElement('div');
+    card.className='card bg-white p-4 flex flex-col';
+    card.innerHTML=`
+      <div class="flex items-start justify-between gap-3">
+        <div><h3 class="text-lg font-semibold">${item.name}</h3></div>
+        <div class="text-right font-semibold mono">${money(item.price)}</div>
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">選擇</button>
+      </div>`;
+    card.querySelector('button').addEventListener('click', ()=> openItemModal(item));
+    root.appendChild(card);
+  });
+}
+
+/* === 選項彈窗（醬汁 / 主食 / 加購 / 數量 / 備註） === */
+let currentItem = null;
+function openItemModal(item){
+  currentItem = item;
+  document.body.classList.add('overflow-hidden');
+  ensureItemModal(); // 若第一次開，先建立 DOM
+  el('#pmTitle').textContent = item.name;
+
+  // 醬汁
+  const sauceSel = el('#pmSauce'); sauceSel.innerHTML='';
+  SAUCES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sauceSel.appendChild(o); });
+
+  // 主食（丼飯/單點多數不顯示）
+  const stapleWrap = el('#pmStapleWrap');
+  const stapleSel  = el('#pmStaple');
+  const isNoStaple = !!item.noStaple;
+  stapleWrap.style.display = isNoStaple ? 'none' : '';
+  stapleSel.innerHTML='';
+  if (!isNoStaple) {
+    STAPLES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o); });
+  }
+
+  // 加點（checkbox）
+  const ex = el('#pmAddons'); ex.innerHTML='';
+  ADDONS.forEach((a,idx)=>{
+    const id = `addon_${idx}`;
+    const row = document.createElement('label');
+    row.className='flex items-center justify-between gap-3 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer';
+    row.innerHTML = `
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="${id}" class="addonChk w-4 h-4">
+        <span class="font-medium">${a.id}</span>
+      </div>
+      <div class="text-sm mono">${money(a.price)}</div>`;
+    ex.appendChild(row);
+  });
+
+  // 備註
+  el('#pmRemark').value = '';
+
+  // 數量初始與小計
+  const qtyInput = el('#pmQty'); qtyInput.value = 1;
+  const updatePmSubtotal = ()=>{
+    const qty = Math.max(1, parseInt(qtyInput.value)||1);
+    const addonSum = Array.from(el('#pmAddons').querySelectorAll('.addonChk'))
+      .reduce((s,chk,i)=> s + (chk.checked ? ADDONS[i].price : 0), 0);
+    const subtotal = item.price * qty + addonSum * qty; // 加點每份計價
+    el('#pmSubtotal').textContent = money(subtotal);
+  };
+  el('#pmDec').onclick = ()=>{ qtyInput.value = Math.max(1, (parseInt(qtyInput.value)||1) - 1); updatePmSubtotal(); };
+  el('#pmInc').onclick = ()=>{ qtyInput.value = (parseInt(qtyInput.value)||1) + 1; updatePmSubtotal(); };
+  qtyInput.oninput = updatePmSubtotal;
+  el('#pmAddons').onchange = updatePmSubtotal;
+  el('#pmSauce').onchange  = updatePmSubtotal;
+  if (!isNoStaple) el('#pmStaple').onchange = updatePmSubtotal;
+  updatePmSubtotal();
+
+  // 加入購物車
+  el('#pmAdd').onclick = ()=>{
+    const qty    = Math.max(1, parseInt(qtyInput.value)||1);
+    const sauce  = el('#pmSauce').value;
+    const staple = isNoStaple ? '' : el('#pmStaple').value;
+    const remark = (el('#pmRemark')?.value || '').trim();
+    const selectedAddons = [];
+    el('#pmAddons').querySelectorAll('.addonChk').forEach((chk, i)=>{
+      if(chk.checked) selectedAddons.push(ADDONS[i]);
     });
-    renderPreview();
+    addToCart({ item, sauce, staple, addons: selectedAddons, qty, remark, noStaple: isNoStaple });
+    closeItemModal();
+  };
 
-    // 安全字串
-    function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  el('#itemModal').classList.remove('hidden');
+}
+function closeItemModal(){
+  el('#itemModal')?.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+function ensureItemModal(){
+  if (el('#itemModal')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'itemModal';
+  wrap.className = 'fixed inset-0 z-40 hidden scroll-y';
+  wrap.innerHTML = `
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative z-10 min-h-full flex items-start justify-center py-6 px-3">
+      <div class="w-full max-w-2xl card bg-white p-6 max-h-[85vh] scroll-y">
+        <div class="flex items-start justify-between">
+          <div class="min-w-0">
+            <h3 id="pmTitle" class="text-xl font-semibold"></h3>
+          </div>
+          <button id="pmClose" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">關閉</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="text-sm text-slate-600">醬汁</label>
+            <select id="pmSauce" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900"></select>
+          </div>
+          <div id="pmStapleWrap">
+            <label class="text-sm text-slate-600">主食</label>
+            <select id="pmStaple" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900"></select>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <label class="text-sm text-slate-600">加購</label>
+          <div id="pmAddons" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+
+        <div class="mt-5">
+          <label class="text-sm text-slate-600">備註（本品項，選填）</label>
+          <textarea id="pmRemark" rows="2"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900"
+            placeholder="例：飯少一點、醬多一點、去蔥"></textarea>
+        </div>
+
+        <div class="mt-5">
+          <label class="text-sm text-slate-600">數量</label>
+          <div class="mt-1 flex items-center gap-2">
+            <button id="pmDec" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">-</button>
+            <input id="pmQty" type="number" min="1" value="1" class="w-20 text-center border border-slate-300 rounded-xl py-2 bg-white text-slate-900" />
+            <button id="pmInc" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">+</button>
+          </div>
+        </div>
+
+        <div class="mt-6 flex items-center justify-between">
+          <div class="text-lg">小計：<span id="pmSubtotal" class="font-semibold mono">$0</span></div>
+          <button id="pmAdd" class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">加入購物車</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#pmClose').addEventListener('click', closeItemModal);
+}
+
+/* === Cart === */
+function addToCart(bundle){ state.cart.push({ type:'meal', ...bundle }); renderCart(); }
+function removeCartEntry(index){ state.cart.splice(index,1); renderCart(); }
+function cartTotal(){
+  return state.cart.reduce((sum,e)=>{
+    if(e.type==='meal'){
+      const addonSum = (e.addons||[]).reduce((s,a)=> s+a.price, 0);
+      return sum + e.item.price*e.qty + addonSum*e.qty;
     }
-
-    // 呼叫 API
-    async function post(action, payload) {
-      const body = Object.assign({ apiKey: API_KEY, action }, payload || {});
-      try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        return await res.json();
-      } catch (e) {
-        return { ok: false, error: 'network' };
-      }
-    }
-
-    // 表單驗證
-    function validate() {
-      const errs = [];
-      if (!nameEl.value.trim()) errs.push('請輸入姓名');
-      if (!phoneEl.value.trim()) errs.push('請輸入電話');
-      if (!mainEl.value) errs.push('請選擇主餐');
-      if (!pickupEl.value) errs.push('請選擇取餐時間');
-      if (!dateEl.value) errs.push('請選擇日期');
-      if (Number(qtyEl.value) < 1) errs.push('份數不可小於 1');
-
-      // 若選今日，時間不可為已過（防止修改 DOM 直接送）
-      if (dateEl.value === today && pickupEl.value) {
-        const slot = dayjs(`${dateEl.value} ${pickupEl.value}:00+08:00`);
-        if (slot.isBefore(dayjs())) errs.push('該取餐時段已過，請重新選擇');
-      }
-      return errs;
-    }
-
-    // 送出事件
-    submitBtn.addEventListener('click', async () => {
-      msgEl.textContent = '';
-      const errors = validate();
-      if (errors.length) {
-        msgEl.className = "text-center text-sm text-red-600 mt-3";
-        msgEl.textContent = errors[0];
-        return;
-      }
-
-      const order = {
-        orderId: crypto.randomUUID(),
-        name: nameEl.value.trim(),
-        phone: phoneEl.value.trim(),
-        main: mainEl.value,
-        side: sideEl.value,
-        qty: Math.max(1, parseInt(qtyEl.value || '1', 10)),
-        note: noteEl.value.trim(),
-        date: dateEl.value,
-        pickup: pickupEl.value
-      };
-
-      // 鎖定按鈕避免重複送出
-      submitBtn.disabled = true;
-      submitBtn.textContent = '送出中...';
-
-      // 第一步：enqueue
-      const enq = await post('enqueue', { order });
-      if (!enq.ok) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '送出訂單';
-        msgEl.className = "text-center text-sm text-red-600 mt-3";
-        msgEl.textContent = `送出失敗：${enq.error || 'unknown'}`;
-        return;
-      }
-
-      // 顯示 displayNo
-      msgEl.className = "text-center text-sm text-slate-700 mt-3";
-      msgEl.innerHTML = `訂單已送出，您的訂單編號：<b class="mono">${enq.displayNo}</b>（同步寫入中）`;
-
-      // 第二步：立即同步
-      const s = await post('sync', {});
-      if (s.ok) {
-        msgEl.className = "text-center text-sm text-green-700 mt-3";
-        msgEl.innerHTML = `完成！您的訂單編號：<b class="mono">${enq.displayNo}</b> 已同步。`;
-      } else {
-        msgEl.className = "text-center text-sm text-amber-700 mt-3";
-        msgEl.innerHTML = `您的訂單編號：<b class="mono">${enq.displayNo}</b> 已送出；同步將在 1 分鐘內完成。`;
-      }
-
-      // 重置表單（可依需求保留）
-      try {
-        nameEl.value = '';
-        phoneEl.value = '';
-        mainEl.value = '';
-        sideEl.value = '';
-        qtyEl.value = 1;
-        noteEl.value = '';
-        pickupEl.value = '';
-        renderPreview();
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '送出訂單';
-      }
+    return sum;
+  }, 0);
+}
+function renderCart(){
+  const root=el('#cartItems'); root.innerHTML='';
+  if(state.cart.length===0){ root.innerHTML='<div class="text-slate-500">購物車目前沒有商品。</div>'; }
+  state.cart.forEach((e, idx)=>{
+    const addonText = (e.addons||[]).length ? e.addons.map(a=>a.id).join('、') : '(無加購)';
+    const staplePart = e.noStaple ? '' : ` ｜ 主食：${e.staple}`;
+    const linePrice = e.item.price*e.qty + (e.addons||[]).reduce((s,a)=> s+a.price,0)*e.qty;
+    const div=document.createElement('div');
+    div.className='card bg-white p-4';
+    div.innerHTML=`
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="font-medium">
+            ${e.item.name} ｜ 醬汁：${e.sauce}${staplePart}
+          </div>
+          <div class="text-sm text-slate-700 mt-1">加購：${addonText}</div>
+          <div class="text-sm text-slate-700 mt-1">備註：${e.remark ? e.remark : '(無)'}</div>
+          <div class="text-sm text-slate-600 mt-1">
+            數量 ×
+            <input type="number" min="1" value="${e.qty}" class="lineQty w-16 text-center border border-slate-300 rounded-lg py-1 mx-1 bg-white text-slate-900">
+          </div>
+        </div>
+        <div class="shrink-0 text-right">
+          <div class="font-semibold mono">${money(linePrice)}</div>
+          <button class="remove btn mt-2 px-3 py-2 border border-slate-300 hover:bg-slate-100">移除</button>
+        </div>
+      </div>`;
+    div.querySelector('.lineQty').addEventListener('input', ev=>{
+      let v=parseInt(ev.target.value)||1; if(v<1)v=1; e.qty=v; renderCart();
     });
-  </script>
+    div.querySelector('.remove').addEventListener('click', ()=> removeCartEntry(idx));
+    root.appendChild(div);
+  });
+  el('#cartTotal').textContent=money(cartTotal());
+}
+
+/* === Apps Script API：enqueue + sync === */
+async function apiEnqueue(order){
+  const body = { apiKey: API_KEY, action: 'enqueue', order };
+  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
+  const t = await r.text();
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0, 200)); }
+  return d; // 期待 { ok:true, orderId, displayNo }
+}
+async function apiSync(){
+  const body = { apiKey: API_KEY, action: 'sync' };
+  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
+  const t = await r.text();
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0, 200)); }
+  return d; // 期待 { ok:true, appended, failed }
+}
+
+/* === Submit === */
+async function onSubmitOrder(e){
+  e.preventDefault();
+  const btn=e.target.querySelector('button[type="submit"]');
+  const setBusy=b=>{ btn.disabled=b; btn.textContent=b?'送出中…':'送出訂單'; };
+  const showErr=m=>el('#formError').textContent=m;
+  setBusy(true); showErr('');
+  try{
+    if(state.cart.length===0){ showErr('購物車尚無商品。'); return; }
+    const name=el('#customerName').value.trim();
+    const phone=el('#customerPhone').value.trim();
+    if(!name||!phone){ showErr('請完整填寫姓名與電話。'); return; }
+
+    // 組訂單品項（名稱含選項、加購、備註）
+    const items = state.cart.map(e=>{
+      const addonText  = (e.addons||[]).length ? '｜加購：'+e.addons.map(a=>a.id).join('、') : '';
+      const staplePart = e.noStaple ? '' : `｜主食：${e.staple}`;
+      const remarkPart = '｜備註：' + (e.remark || '');
+      const nameWith   = `${e.item.name}｜醬汁：${e.sauce}${staplePart}${addonText}${remarkPart}`;
+      const unitPrice  = e.item.price + (e.addons||[]).reduce((s,a)=> s+a.price, 0);
+      return { id:e.item.id, name:nameWith, price:unitPrice, qty:e.qty };
+    });
+    const subtotal = items.reduce((s,it)=> s + it.price*it.qty, 0);
+
+    const order={
+      orderId: crypto.randomUUID(),        // 冪等
+      customer:{ name, phone },
+      items, subtotal, total:subtotal,
+      createdAt:new Date().toISOString(),
+      source:'zhaojin-web'
+    };
+
+    // Step 1: enqueue（GAS 會回傳 displayNo）
+    const enq = await apiEnqueue(order);
+    if(!enq.ok){ showErr(`送單失敗：${enq.error||'enqueue_failed'}`); return; }
+
+    // 顯示成功視窗 + 訂單編號（立即可見）
+    el('#displayNoText').textContent = enq.displayNo || '';
+    el('#syncStatusText').textContent = '正在同步至訂單表中…';
+    el('#successModal').classList.remove('hidden');
+
+    // Step 2: 立刻同步（queue -> order）
+    const s = await apiSync();
+    el('#syncStatusText').textContent = s.ok
+      ? '已同步完成。'
+      : '同步失敗，系統將於 1 分鐘內自動補同步。';
+
+    // 清空購物車
+    state.cart=[]; renderCart();
+
+  }catch(err){
+    el('#formError').textContent = '送單失敗：'+err.message;
+  }finally{ setBusy(false); }
+}
+
+/* === 公告視窗控制 === */
+function openNotice(){
+  document.body.classList.add('overflow-hidden');
+  el('#noticeModal').classList.remove('hidden');
+}
+function closeNotice(){
+  el('#noticeModal').classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+
+/* === Init === */
+document.addEventListener('DOMContentLoaded',()=>{
+  el('#year').textContent=new Date().getFullYear();
+
+  // 招金菜單渲染
+  renderCategory(MENU.don,'#donList');
+  renderCategory(MENU.bento,'#bentoList');
+  renderCategory(MENU.special,'#specialList');
+  renderCategory(MENU.sides,'#sidesList');
+  renderCategory(MENU.drinks,'#drinkList');
+
+  renderCart();
+  el('#clearCart').addEventListener('click',()=>{state.cart=[];renderCart();});
+  el('#checkoutForm').addEventListener('submit',onSubmitOrder);
+  el('#closeSuccess').addEventListener('click',()=>el('#successModal').classList.add('hidden'));
+
+  // 公告：頁面載入後可選擇顯示或關閉
+  // openNotice();
+  el('#closeNotice')?.addEventListener('click', closeNotice);
+});
+</script>
 </body>
 </html>
-
