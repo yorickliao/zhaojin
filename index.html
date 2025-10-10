@@ -121,7 +121,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyczRy_eBR0Utq5LG9p3hWm1MuSVEyjsDKgxo_EnzVbKb2pOvDJVsDQlkA9yRzu6yq6hQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxqk6OdNh1EeL2G3__zUTmdeBo4b8DMgMdDIJOE8_sk0yxp7zxN2sawTdqI0TnspkPZog/exec';
 const API_KEY  = 'zhaojin';
 
 /* === 工具 & 狀態 === */
@@ -212,7 +212,6 @@ function openItemModal(item){
 
   el('#pmTitle').textContent = item.name;
 
-  // 主食：僅鍋燒需要
   const stapleWrap = el('#pmStapleWrap');
   const stapleSel  = el('#pmStaple');
   const needStaple = !!item.requireStaple;
@@ -222,10 +221,8 @@ function openItemModal(item){
     HOTPOT_STAPLES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o); });
   }
 
-  // 備註重設
   el('#pmRemark').value = '';
 
-  // 數量與小計
   const qtyInput = el('#pmQty'); qtyInput.value = 1;
   const updatePmSubtotal = ()=>{
     const qty = Math.max(1, parseInt(qtyInput.value)||1);
@@ -237,7 +234,6 @@ function openItemModal(item){
   qtyInput.oninput = updatePmSubtotal;
   updatePmSubtotal();
 
-  // 加入購物車
   el('#pmAdd').onclick = ()=>{
     const qty    = Math.max(1, parseInt(qtyInput.value)||1);
     const staple = needStaple ? el('#pmStaple').value : '';
@@ -343,15 +339,26 @@ function renderCart(){
   el('#cartTotal').textContent=money(cartTotal());
 }
 
-/* === Apps Script API：enqueue + sync（同步背景執行，不顯示 UI）=== */
-async function apiEnqueue(order){
-  const body = { apiKey: API_KEY, action: 'enqueue', order };
-  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
+/* === Apps Script API：reserve（取號秒回） + confirm（落 queue） + sync（搬 order） === */
+async function apiReserve(orderId){
+  const r = await fetch(ENDPOINT, {
+    method: 'POST',
+    body: JSON.stringify({ apiKey: API_KEY, action: 'reserve', orderId })
+  });
   const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0, 200)); }
-  return d; // 期待 { ok:true, orderId, pickupNo, pickupTime }
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
+  return d; // { ok, orderId, pickupNo, pickupTime }
 }
-async function apiSync(){ // fire-and-forget
+async function apiConfirm(order){
+  const r = await fetch(ENDPOINT, {
+    method: 'POST',
+    body: JSON.stringify({ apiKey: API_KEY, action: 'confirm', order })
+  });
+  const t = await r.text();
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
+  return d; // { ok:true }
+}
+async function apiSync(){ // 背景執行，不顯示 UI
   try {
     await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) });
   } catch {}
@@ -376,7 +383,6 @@ async function onSubmitOrder(e){
     const phone=el('#customerPhone').value.trim();
     if(!name||!phone){ showErr('請完整填寫姓名與電話。'); return; }
 
-    // 組訂單品項（名稱含主食與備註）
     const items = state.cart.map(e=>{
       const staplePart = e.needStaple ? `｜主食：${e.staple||'-'}` : '';
       const remarkPart = e.remark ? `｜備註：${e.remark}` : '';
@@ -385,27 +391,31 @@ async function onSubmitOrder(e){
     });
     const subtotal = items.reduce((s,it)=> s + it.price*it.qty, 0);
 
-    const order={
-      orderId: crypto.randomUUID(),
+    const orderId = crypto.randomUUID();
+    const order = {
+      orderId,
       customer:{ name, phone },
       items, subtotal, total:subtotal,
       createdAt:new Date().toISOString(),
       source:'zhaojin-web'
     };
 
-    // enqueue：後端會立即回 { pickupNo, pickupTime }
-    const enq = await apiEnqueue(order);
-    if(!enq.ok){ showErr(`送單失敗：${enq.error||'enqueue_failed'}`); return; }
+    // A) 先 reserve：取號 + 取餐時間（秒回給顧客）
+    const res = await apiReserve(orderId);
+    if(!res.ok){ showErr(`送單失敗：${res.error||'reserve_failed'}`); return; }
 
-    // 立即顯示「取餐資訊」；不顯示同步狀態
-    el('#pickupNoText').textContent   = String(enq.pickupNo ?? '');
-    el('#pickupTimeText').textContent = hhmm(enq.pickupTime ?? '');
+    el('#pickupNoText').textContent   = String(res.pickupNo ?? '');
+    el('#pickupTimeText').textContent = hhmm(res.pickupTime ?? '');
     el('#successModal').classList.remove('hidden');
 
-    // 背景同步，不打擾 UI
-    apiSync();
+    // B) 背景 confirm（落 queue）→ 成功後再 sync（搬到 order）
+    (async ()=>{
+      try{
+        const c = await apiConfirm(order);
+        if (c && c.ok) { apiSync(); }
+      }catch(_){}
+    })();
 
-    // 清空購物車
     state.cart=[]; renderCart();
 
   }catch(err){
