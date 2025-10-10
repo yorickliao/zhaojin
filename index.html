@@ -1,1 +1,314 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>招金 線上點餐</title>
+  <meta name="color-scheme" content="light">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Day.js -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
+  <script>
+    dayjs.extend(dayjs_plugin_utc);
+    dayjs.extend(dayjs_plugin_timezone);
+    dayjs.tz.setDefault("Asia/Taipei");
+  </script>
+
+  <style>
+    .card{border-radius:1rem}
+    .btn{border-radius:1rem}
+    .container-slim{max-width:1100px}
+    .mono{font-variant-numeric: tabular-nums}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <header class="bg-white/80 backdrop-blur sticky top-0 border-b border-slate-200">
+    <div class="container-slim mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-xl md:text-2xl font-bold">招金 線上點餐</h1>
+      <span class="text-sm text-slate-600">每日限量，請提早預訂</span>
+    </div>
+  </header>
+
+  <main class="container-slim mx-auto p-4">
+    <!-- 顧客資訊 -->
+    <section class="card bg-white shadow p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3">顧客資訊</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm text-slate-700">姓名</span>
+          <input id="name" type="text" class="mt-1 border rounded w-full p-2" placeholder="請輸入姓名">
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-700">電話</span>
+          <input id="phone" type="tel" class="mt-1 border rounded w-full p-2" placeholder="請輸入電話">
+        </label>
+      </div>
+    </section>
+
+    <!-- 餐點選擇 -->
+    <section class="card bg-white shadow p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3">餐點選擇</h2>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm text-slate-700">主餐</span>
+          <select id="main" class="mt-1 border rounded w-full p-2">
+            <option value="">請選擇主餐</option>
+            <option>照燒雞腿丼</option>
+            <option>招金牛肉丼</option>
+            <option>蒜香豬排便當</option>
+            <option>主廚特製魚排</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-slate-700">加購</span>
+          <select id="side" class="mt-1 border rounded w-full p-2">
+            <option value="">無</option>
+            <option>味噌湯 +$20</option>
+            <option>飲料 +$30</option>
+            <option>小菜拼盤 +$40</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-slate-700">份數</span>
+          <input id="qty" type="number" min="1" value="1" class="mt-1 border rounded w-full p-2 mono">
+        </label>
+
+        <div class="hidden md:block"></div>
+
+        <label class="block md:col-span-2">
+          <span class="text-sm text-slate-700">備註</span>
+          <textarea id="note" rows="2" class="mt-1 border rounded w-full p-2" placeholder="例如：飯少一點、醬多一點、去蔥"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- 取餐時間 -->
+    <section class="card bg-white shadow p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-2">取餐時間</h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        <label class="block">
+          <span class="text-sm text-slate-700">日期</span>
+          <input id="date" type="date" class="mt-1 border rounded w-full p-2">
+        </label>
+        <label class="block md:col-span-2">
+          <span class="text-sm text-slate-700">時段</span>
+          <select id="pickup" class="mt-1 border rounded w-full p-2">
+            <option value="">請選擇時間</option>
+          </select>
+        </label>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">可選時段：11:00 至 19:00（整點）。若當日已過的時段將自動禁用。</p>
+    </section>
+
+    <!-- 訂單確認 -->
+    <section class="card bg-white shadow p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-2">訂單確認</h2>
+      <div id="preview" class="text-sm text-slate-700 space-y-1">
+        <p>請填寫資料，上方資訊會即時顯示在此處作為確認。</p>
+      </div>
+    </section>
+
+    <!-- 送出 -->
+    <div class="mb-8">
+      <button id="submit" class="btn bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full py-3">送出訂單</button>
+      <p id="msg" class="text-center text-sm text-slate-700 mt-3"></p>
+    </div>
+  </main>
+
+  <!-- 前端設定：請放置 web/config.js 並提供 APP_CONFIG -->
+  <script src="./config.js"></script>
+  <script>
+    // 基本設定
+    const cfg = window.APP_CONFIG || {};
+    const API_URL = cfg.API_URL;
+    const API_KEY = cfg.API_KEY;
+
+    // DOM 快取
+    const $ = (id) => document.getElementById(id);
+    const nameEl = $('name');
+    const phoneEl = $('phone');
+    const mainEl = $('main');
+    const sideEl = $('side');
+    const qtyEl = $('qty');
+    const noteEl = $('note');
+    const dateEl = $('date');
+    const pickupEl = $('pickup');
+    const previewEl = $('preview');
+    const submitBtn = $('submit');
+    const msgEl = $('msg');
+
+    // 產生今天日期預設值，且不允許選過去日期
+    const today = dayjs().format('YYYY-MM-DD');
+    dateEl.value = today;
+    dateEl.min = today;
+
+    // 產生時段（11:00~19:00 整點）
+    function populateTimes() {
+      pickupEl.innerHTML = '<option value="">請選擇時間</option>';
+      const selectedDate = dayjs.tz(dateEl.value, 'Asia/Taipei');
+      for (let h = 11; h <= 19; h++) {
+        const t = selectedDate.hour(h).minute(0).second(0).millisecond(0);
+        const label = t.format('HH:mm');
+        const opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label;
+
+        // 若是今天且該時段已過，直接禁用
+        const now = dayjs();
+        if (selectedDate.isSame(now, 'day')) {
+          if (t.isBefore(now)) {
+            opt.disabled = true;
+            opt.textContent = `${label}（已過）`;
+          }
+        }
+        pickupEl.appendChild(opt);
+      }
+    }
+    populateTimes();
+
+    dateEl.addEventListener('change', populateTimes);
+
+    // 預覽區塊
+    function renderPreview() {
+      const name = nameEl.value.trim() || '—';
+      const phone = phoneEl.value.trim() || '—';
+      const main = mainEl.value || '—';
+      const side = sideEl.value || '—';
+      const qty = Math.max(1, parseInt(qtyEl.value || '1', 10));
+      const note = noteEl.value.trim() || '—';
+      const d = dateEl.value || today;
+      const p = pickupEl.value || '—';
+
+      previewEl.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-x-6 gap-y-1">
+          <p><span class="text-slate-500">姓名：</span>${escapeHtml(name)}</p>
+          <p><span class="text-slate-500">電話：</span>${escapeHtml(phone)}</p>
+          <p><span class="text-slate-500">主餐：</span>${escapeHtml(main)}</p>
+          <p><span class="text-slate-500">加購：</span>${escapeHtml(side)}</p>
+          <p><span class="text-slate-500">份數：</span><span class="mono">${qty}</span></p>
+          <p><span class="text-slate-500">備註：</span>${escapeHtml(note)}</p>
+          <p><span class="text-slate-500">日期：</span>${escapeHtml(d)}</p>
+          <p><span class="text-slate-500">取餐時間：</span>${escapeHtml(p)}</p>
+        </div>
+      `;
+    }
+    ['input','change'].forEach(evt=>{
+      [nameEl, phoneEl, mainEl, sideEl, qtyEl, noteEl, dateEl, pickupEl].forEach(el=>{
+        el.addEventListener(evt, renderPreview);
+      });
+    });
+    renderPreview();
+
+    // 安全字串
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // 呼叫 API
+    async function post(action, payload) {
+      const body = Object.assign({ apiKey: API_KEY, action }, payload || {});
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        return await res.json();
+      } catch (e) {
+        return { ok: false, error: 'network' };
+      }
+    }
+
+    // 表單驗證
+    function validate() {
+      const errs = [];
+      if (!nameEl.value.trim()) errs.push('請輸入姓名');
+      if (!phoneEl.value.trim()) errs.push('請輸入電話');
+      if (!mainEl.value) errs.push('請選擇主餐');
+      if (!pickupEl.value) errs.push('請選擇取餐時間');
+      if (!dateEl.value) errs.push('請選擇日期');
+      if (Number(qtyEl.value) < 1) errs.push('份數不可小於 1');
+
+      // 若選今日，時間不可為已過（防止修改 DOM 直接送）
+      if (dateEl.value === today && pickupEl.value) {
+        const slot = dayjs(`${dateEl.value} ${pickupEl.value}:00+08:00`);
+        if (slot.isBefore(dayjs())) errs.push('該取餐時段已過，請重新選擇');
+      }
+      return errs;
+    }
+
+    // 送出事件
+    submitBtn.addEventListener('click', async () => {
+      msgEl.textContent = '';
+      const errors = validate();
+      if (errors.length) {
+        msgEl.className = "text-center text-sm text-red-600 mt-3";
+        msgEl.textContent = errors[0];
+        return;
+      }
+
+      const order = {
+        orderId: crypto.randomUUID(),
+        name: nameEl.value.trim(),
+        phone: phoneEl.value.trim(),
+        main: mainEl.value,
+        side: sideEl.value,
+        qty: Math.max(1, parseInt(qtyEl.value || '1', 10)),
+        note: noteEl.value.trim(),
+        date: dateEl.value,
+        pickup: pickupEl.value
+      };
+
+      // 鎖定按鈕避免重複送出
+      submitBtn.disabled = true;
+      submitBtn.textContent = '送出中...';
+
+      // 第一步：enqueue
+      const enq = await post('enqueue', { order });
+      if (!enq.ok) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送出訂單';
+        msgEl.className = "text-center text-sm text-red-600 mt-3";
+        msgEl.textContent = `送出失敗：${enq.error || 'unknown'}`;
+        return;
+      }
+
+      // 顯示 displayNo
+      msgEl.className = "text-center text-sm text-slate-700 mt-3";
+      msgEl.innerHTML = `訂單已送出，您的訂單編號：<b class="mono">${enq.displayNo}</b>（同步寫入中）`;
+
+      // 第二步：立即同步
+      const s = await post('sync', {});
+      if (s.ok) {
+        msgEl.className = "text-center text-sm text-green-700 mt-3";
+        msgEl.innerHTML = `完成！您的訂單編號：<b class="mono">${enq.displayNo}</b> 已同步。`;
+      } else {
+        msgEl.className = "text-center text-sm text-amber-700 mt-3";
+        msgEl.innerHTML = `您的訂單編號：<b class="mono">${enq.displayNo}</b> 已送出；同步將在 1 分鐘內完成。`;
+      }
+
+      // 重置表單（可依需求保留）
+      try {
+        nameEl.value = '';
+        phoneEl.value = '';
+        mainEl.value = '';
+        sideEl.value = '';
+        qtyEl.value = 1;
+        noteEl.value = '';
+        pickupEl.value = '';
+        renderPreview();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '送出訂單';
+      }
+    });
+  </script>
+</body>
+</html>
 
