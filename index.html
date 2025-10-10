@@ -92,15 +92,20 @@
   </aside>
 </main>
 
-<!-- 成功視窗（顯示訂單編號 + 同步狀態） -->
+<!-- 成功視窗：直接顯示取餐資訊（不顯示同步狀態） -->
 <div id="successModal" class="fixed inset-0 z-40 hidden">
   <div class="absolute inset-0 bg-black/40"></div>
   <div class="relative z-10 mx-auto mt-24 w-[92%] max-w-xl card bg-white p-6">
-    <h3 class="text-xl font-semibold mb-2">下單成功</h3>
-    <p class="text-slate-700">訂單編號：</p>
-    <p id="displayNoText" class="text-3xl font-extrabold tracking-wider mt-1 mono"></p>
-    <p id="syncStatusText" class="text-slate-700 mt-3"></p>
-    <div class="mt-4 flex justify-end">
+    <h3 class="text-xl font-semibold mb-4">下單成功</h3>
+    <div class="space-y-2">
+      <p class="text-slate-700">取餐編號</p>
+      <p id="pickupNoText" class="text-4xl font-extrabold tracking-wider mt-1 mono"></p>
+    </div>
+    <div class="space-y-2 mt-4">
+      <p class="text-slate-700">取餐時間</p>
+      <p id="pickupTimeText" class="text-2xl font-bold mt-1 mono"></p>
+    </div>
+    <div class="mt-6 flex justify-end">
       <button id="closeSuccess" class="btn px-4 py-2 border border-slate-300 hover:bg-slate-100">關閉</button>
     </div>
   </div>
@@ -129,7 +134,6 @@ const HOTPOT_STAPLES = ["意麵","雞絲","冬粉","泡麵","飯"];
 
 /* === 菜單 === */
 const MENU = {
-  // 鍋燒系列（需選主食）
   hotpot: [
     { id:"hp_orig",   name:"原味鍋燒",     price:80,  requireStaple:true },
     { id:"hp_kimchi", name:"泡菜鍋燒",     price:85,  requireStaple:true },
@@ -138,7 +142,6 @@ const MENU = {
     { id:"hp_shrimp", name:"有夠蝦鍋燒",   price:150, requireStaple:true },
     { id:"hp_purine", name:"通痛風鍋燒",   price:170, requireStaple:true },
   ],
-  // 呷飽飽系列
   full: [
     { id:"full_minced_pork_rice", name:"懷舊肉燥飯",   price:35,  noStaple:true },
     { id:"full_rice_noodle",      name:"古味炒米粉",   price:40,  noStaple:true },
@@ -157,19 +160,16 @@ const MENU = {
     { id:"full_fried_chicken_lu", name:"炸雞滷肉飯",   price:80,  noStaple:true },
     { id:"full_crispy_chicken",   name:"香酥雞排飯",   price:70,  noStaple:true },
   ],
-  // 喝湯
   soup: [
     { id:"soup_egg",      name:"蛋花湯",       price:30, noStaple:true },
     { id:"soup_meatball", name:"貢丸湯",       price:30, noStaple:true },
     { id:"soup_seaweed",  name:"紫菜蛋花湯",   price:40, noStaple:true },
     { id:"soup_clam",     name:"蛤仔湯",       price:40, noStaple:true },
   ],
-  // 喝茶
   tea: [
     { id:"tea_black",   name:"紅茶",   price:30, noStaple:true },
     { id:"tea_winter",  name:"冬瓜茶", price:30, noStaple:true },
   ],
-  // 呷甜（甜甜圈）
   donut: [
     { id:"donut_orig",     name:"原味",     price:30, noStaple:true },
     { id:"donut_peanut",   name:"花生",     price:40, noStaple:true },
@@ -343,20 +343,24 @@ function renderCart(){
   el('#cartTotal').textContent=money(cartTotal());
 }
 
-/* === Apps Script API：enqueue + sync === */
+/* === Apps Script API：enqueue + sync（同步背景執行，不顯示 UI）=== */
 async function apiEnqueue(order){
   const body = { apiKey: API_KEY, action: 'enqueue', order };
   const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
   const t = await r.text();
   let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0, 200)); }
-  return d; // 期待 { ok:true, orderId, displayNo }
+  return d; // 期待 { ok:true, orderId, pickupNo, pickupTime }
 }
-async function apiSync(){
-  const body = { apiKey: API_KEY, action: 'sync' };
-  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
-  const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0, 200)); }
-  return d; // 期待 { ok:true, appended, failed }
+async function apiSync(){ // fire-and-forget
+  try {
+    await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) });
+  } catch {}
+}
+
+/* === 小工具：轉 HH:mm 顯示 === */
+function hhmm(s){
+  const m = String(s||'').match(/\b(\d{2}):(\d{2})\b/);
+  return m ? `${m[1]}:${m[2]}` : s;
 }
 
 /* === Submit === */
@@ -382,27 +386,24 @@ async function onSubmitOrder(e){
     const subtotal = items.reduce((s,it)=> s + it.price*it.qty, 0);
 
     const order={
-      orderId: crypto.randomUUID(),        // 冪等
+      orderId: crypto.randomUUID(),
       customer:{ name, phone },
       items, subtotal, total:subtotal,
       createdAt:new Date().toISOString(),
       source:'zhaojin-web'
     };
 
-    // Step 1: enqueue（GAS 會回傳 displayNo）
+    // enqueue：後端會立即回 { pickupNo, pickupTime }
     const enq = await apiEnqueue(order);
     if(!enq.ok){ showErr(`送單失敗：${enq.error||'enqueue_failed'}`); return; }
 
-    // 顯示成功視窗 + 訂單編號（立即可見）
-    el('#displayNoText').textContent = enq.displayNo || '';
-    el('#syncStatusText').textContent = '正在同步至訂單表中…';
+    // 立即顯示「取餐資訊」；不顯示同步狀態
+    el('#pickupNoText').textContent   = String(enq.pickupNo ?? '');
+    el('#pickupTimeText').textContent = hhmm(enq.pickupTime ?? '');
     el('#successModal').classList.remove('hidden');
 
-    // Step 2: 立刻同步（queue -> order）
-    const s = await apiSync();
-    el('#syncStatusText').textContent = s.ok
-      ? '已同步完成。'
-      : '同步失敗，系統將於 1 分鐘內自動補同步。';
+    // 背景同步，不打擾 UI
+    apiSync();
 
     // 清空購物車
     state.cart=[]; renderCart();
@@ -416,7 +417,6 @@ async function onSubmitOrder(e){
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
 
-  // 渲染各分類
   renderCategory(MENU.hotpot,'#hotpotList');
   renderCategory(MENU.full,'#fullList');
   renderCategory(MENU.soup,'#soupList');
