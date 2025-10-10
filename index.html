@@ -13,6 +13,7 @@
     input,select,textarea{background:#fff!important;color:#0f172a!important;-webkit-text-fill-color:#0f172a;border-color:#cbd5e1}
     select option{background:#fff;color:#0f172a}
     .scroll-y{overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .hidden-imp{display:none!important}
   </style>
 </head>
 
@@ -96,7 +97,8 @@
           <select id="pickupSelect"
                   class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900">
           </select>
-          
+          <p id="pickupHint" class="text-xs text-slate-500 mt-1">營業時段：16:00–20:00；每 15 分鐘一個時段。</p>
+          <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp">目前非可取餐時段，您仍可下單，但將自動安排至下一個可取時段。</p>
         </div>
 
         <!-- 內用：桌號 -->
@@ -118,7 +120,7 @@
                  class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900" />
         </div>
 
-        <button type="submit" class="w-full btn px-4 py-3 bg-slate-900 text-white hover:bg-slate-800">送出訂單</button>
+        <button id="submitBtn" type="submit" class="w-full btn px-4 py-3 bg-slate-900 text-white hover:bg-slate-800">送出訂單</button>
         <p id="formError" class="text-sm text-red-600"></p>
       </form>
     </div>
@@ -164,7 +166,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyJJru_dvbb7rwRqOdZZ-sVt9_f6pjTNjTHzPIS6QvUCt8qz_LF8r9FMP9orsWKKL71Ng/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxlXM-1P4yD5jHk6xyqj0hfGz3xQZ8mHknkX1a65C-rMP4a9Kz-V70QaO00XZGtegL86w/exec';
 const API_KEY  = 'zhaojin';
 
 /* === 工具 & 狀態 === */
@@ -172,6 +174,9 @@ const el = s => document.querySelector(s);
 const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
 const pad2 = n => String(n).padStart(2, '0');
 const state = { cart: [], slots: [] };
+
+/* === 參數：營業時間 === */
+const BUSINESS = { startHour:16, endHour:20, intervalMin:15 };
 
 /* === 鍋燒主食選項 === */
 const HOTPOT_STAPLES = ["意麵","雞絲","冬粉","泡麵","飯"];
@@ -385,74 +390,80 @@ function renderCart(){
 
 /* === 外帶：時段產生（16:00-20:00，每15分） === */
 function generateSlots(dateObj = new Date()){
-  // 固定當天；若超過 20:00 則給空清單（你也可切換到下一個營業日）
   const y = dateObj.getFullYear();
   const m = dateObj.getMonth();
   const d = dateObj.getDate();
   const slots = [];
-  const start = new Date(y, m, d, 16, 0, 0);
-  const end   = new Date(y, m, d, 20, 0, 0);
-  for (let t = new Date(start); t <= end; t = new Date(t.getTime() + 15*60000)) {
+  const start = new Date(y, m, d, BUSINESS.startHour, 0, 0);
+  const end   = new Date(y, m, d, BUSINESS.endHour, 0, 0);
+  for (let t = new Date(start); t <= end; t = new Date(t.getTime() + BUSINESS.intervalMin*60000)) {
     slots.push(new Date(t));
   }
   return slots;
 }
 function fillPickupSelect(){
   const sel = el('#pickupSelect');
+  const offMsg = el('#offHourMsg');
   sel.innerHTML = '';
   state.slots.forEach(dt=>{
     const hh = pad2(dt.getHours());
     const mm = pad2(dt.getMinutes());
-    const v = dt.toISOString(); // value 帶完整 ISO，便於送後端
     const o = document.createElement('option');
-    o.value = v;
+    o.value = dt.toISOString(); // 後端會以 ISO 解析
     o.textContent = `${hh}:${mm}`;
     sel.appendChild(o);
   });
-  // 增加一個「不指定，自動安排」選項在最上
   const auto = document.createElement('option');
   auto.value = '';
   auto.textContent = '（不指定，系統自動安排最早時段）';
   sel.insertBefore(auto, sel.firstChild);
   sel.value = '';
+
+  // 是否目前不在可取時段
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.startHour, 0, 0);
+  const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.endHour, 0, 0);
+  const offHour = now < start || now > end;
+  offMsg.classList.toggle('hidden-imp', !offHour);
 }
 function roundUpTo15min(date){
-  const ms = 15*60000;
+  const ms = BUSINESS.intervalMin*60000;
   return new Date(Math.ceil(date.getTime()/ms)*ms);
 }
 function chooseEarliestSlot(now = new Date()){
-  // 保障至少 15 分鐘準備時間
-  const earliest = roundUpTo15min(new Date(now.getTime() + 15*60000));
+  const earliest = roundUpTo15min(new Date(now.getTime() + BUSINESS.intervalMin*60000));
   for (const s of state.slots){
     if (s.getTime() >= earliest.getTime()) return s;
   }
-  // 若都不符合，就用最後一個時段（可依需求改成下一個營業日）
   return state.slots[state.slots.length - 1] || null;
 }
 
-/* === Apps Script API：reserve + confirm + sync ===
-   備註：如要後端尊重外帶「自選時段」，可在 reserve body 帶 pickupAtHint（ISO），
-   並在你的 GAS reserve 分支採用該值取號（否則仍以 +15m 為主）。 */
+/* === Apps Script API：reserve + confirm + sync === */
 async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
   const body = { apiKey: API_KEY, action: 'reserve', orderId };
-  if (pickupAtHintISO) body.pickupAtHint = pickupAtHintISO; // 後端可選擇採用
+  if (pickupAtHintISO) body.pickupAtHint = pickupAtHintISO;
   if (diningType) body.diningType = diningType;
   if (tableNo) body.tableNo = tableNo;
-  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(body) });
+  const r = await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) });
   const t = await r.text();
   let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
-  return d; // { ok, orderId, pickupNo, pickupTime }
+  return d;
 }
 async function apiConfirm(order){
   const r = await fetch(ENDPOINT, {
     method: 'POST',
+    headers:{'Content-Type':'text/plain'},
     body: JSON.stringify({ apiKey: API_KEY, action: 'confirm', order })
   });
   const t = await r.text();
   let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
-  return d; // { ok:true }
+  return d;
 }
-async function apiSync(){ try { await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) }); } catch {} }
+async function apiSync(){
+  try {
+    await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) });
+  } catch {}
+}
 
 /* === 小工具：顯示 HH:mm === */
 function hhmmFromISO(iso){
@@ -465,7 +476,7 @@ function hhmmFromISO(iso){
 /* === Submit === */
 async function onSubmitOrder(e){
   e.preventDefault();
-  const btn=e.target.querySelector('button[type="submit"]');
+  const btn=el('#submitBtn');
   const setBusy=b=>{ btn.disabled=b; btn.textContent=b?'送出中…':'送出訂單'; };
   const showErr=m=>el('#formError').textContent=m;
   setBusy(true); showErr('');
@@ -503,7 +514,7 @@ async function onSubmitOrder(e){
       desiredPickupTime: (diningType==='takeout' ? (pickupAtHintISO || null) : null)
     };
 
-    // A) reserve：取號 + 取餐時間（外帶可帶 pickupAtHint；內用則不帶，後端可用 +15m）
+    // A) reserve：依你的 GAS 新版，外帶用顧客自選時段；內用不寫時間
     const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
     if(!res.ok){ showErr(`送單失敗：${res.error||'reserve_failed'}`); return; }
 
@@ -512,7 +523,6 @@ async function onSubmitOrder(e){
     if (diningType === 'takeout'){
       el('#successTakeoutTime').classList.remove('hidden');
       el('#successTable').classList.add('hidden');
-      // 顯示後端回傳時間；若後端尚未採用 hint，這裡會是 +15m 結果
       el('#pickupTimeText').textContent = hhmmFromISO(res.pickupTime ?? pickupAtHintISO ?? '');
     } else {
       el('#successTakeoutTime').classList.add('hidden');
@@ -549,6 +559,11 @@ function onDiningTypeChange(){
 }
 
 /* === Init === */
+function initSlots(){
+  state.slots = generateSlots(new Date());
+  fillPickupSelect();
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
 
@@ -564,14 +579,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   el('#closeSuccess').addEventListener('click',()=>el('#successModal').classList.add('hidden'));
 
   // 外帶時段初始化
-  state.slots = generateSlots(new Date());
-  fillPickupSelect();
+  initSlots();
 
   // 切換內用/外帶
   document.querySelectorAll('input[name="diningType"]').forEach(r=>{
     r.addEventListener('change', onDiningTypeChange);
   });
   onDiningTypeChange();
+
+  // 每分鐘刷新可選時段（避免長時間停留頁面造成時段過舊）
+  setInterval(initSlots, 60*1000);
 });
 </script>
 </body>
