@@ -244,6 +244,8 @@ function renderCards() {
       ? `桌號: ${o.pickupTime}` 
       : `餐點取餐時間: ${onlyHHmm(o.pickupTime)}`;
 
+    const formattedPickupTime = onlyHHmm(formatDateToTaipei(o.pickupTime));
+
     // 卡片 HTML 內容
     card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
