@@ -229,6 +229,11 @@ function renderCards() {
   const container = document.querySelector('#ordersContainer');
   container.innerHTML = '';
 
+  // 設定容器為 grid 佈局
+  container.style.display = 'grid';
+  container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))'; // 自動排列，排滿一行後換行
+  container.style.gap = '16px'; // 卡片間的間隔
+
   ORDERS.forEach(o => {
     const done = o.done === '1';
     const card = document.createElement('div');
@@ -242,14 +247,14 @@ function renderCards() {
     // 卡片 HTML 內容
     card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
-      <h3 class="text-xl font-medium">訂單編號: #${o.pickupNo}</h3>
+      <h3 class="text-2xl font-semibold">訂單編號: #${o.pickupNo}</h3>
       <div class="border-t border-b my-2 py-2">
-        <p class="text-sm">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
-        <p class="text-sm">${pickupInfo}</p>
-        <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
+        <p class="text-xl">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
+        <p class="text-lg">${pickupInfo}</p>
+        <p class="text-lg">姓名: ${o.name} | 電話: ${o.phone}</p>
       </div>
       <div class="border-t border-b my-2 py-2">
-        <p class="text-sm">餐點: ${o.items}</p>
+        <p class="text-lg">餐點: ${o.items}</p>
       </div>
       <div class="text-right">
         <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}">
@@ -288,6 +293,7 @@ function renderCards() {
     container.appendChild(card);
   });
 }
+
 
 
 async function apiSetDone(id, next){
