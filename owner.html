@@ -236,12 +236,20 @@ function renderCards(){
     // 根據 diningType 設置不同樣式
     const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
     
-    const pickupInfo = o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${onlyHHmm(o.pickupTime)}`;
+  
 
-    card.classList.add('card', cardClass);  // 加入不同樣式類別
+    // 假設這是你目前顯示的時間（pickupTime）
+    const pickupInfo = o.diningType === 'dinein' 
+      ? `桌號: ${o.pickupTime}` 
+      : `取餐時間: ${onlyHHmm(o.pickupTime)}`;
+    
+    // 使用 formatDateToTaipei 函數將 pickupTime 格式化為台北時區
+    const formattedPickupTime = formatDateToTaipei(o.pickupTime);
+    
+    card.classList.add('card', cardClass);
     card.innerHTML = `
       <h3 class="text-xl font-medium">訂單編號: #${o.pickupNo}</h3>
-      <p class="text-sm">${pickupInfo}</p>  <!-- 顯示桌號或取餐時間 -->
+      <p class="text-sm">${o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${formattedPickupTime}`}</p> <!-- 顯示取餐時間並轉換為台北時區 -->
       <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
       <div class="text-sm">${o.items}</div>
       <div class="text-right">
@@ -255,6 +263,8 @@ function renderCards(){
         </button>
       </div>
     `;
+
+
 
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
