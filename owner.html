@@ -225,33 +225,32 @@ function applyFilters(){
 }
 
 
-function renderCards(){
+function renderCards() {
   const container = document.querySelector('#ordersContainer');
   container.innerHTML = '';
 
   ORDERS.forEach(o => {
     const done = o.done === '1';
     const card = document.createElement('div');
-
+    
     // 根據 diningType 設置不同樣式
     const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
-    
-  
-
-    // 假設這是你目前顯示的時間（pickupTime）
     const pickupInfo = o.diningType === 'dinein' 
       ? `桌號: ${o.pickupTime}` 
-      : `取餐時間: ${onlyHHmm(o.pickupTime)}`;
-    
-    // 使用 formatDateToTaipei 函數將 pickupTime 格式化為台北時區
-    const formattedPickupTime = formatDateToTaipei(o.pickupTime);
-    
-    card.classList.add('card', cardClass);
+      : `餐點取餐時間: ${onlyHHmm(o.pickupTime)}`;
+
+    // 卡片 HTML 內容
+    card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
       <h3 class="text-xl font-medium">訂單編號: #${o.pickupNo}</h3>
-      <p class="text-sm">${o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${formattedPickupTime}`}</p> <!-- 只顯示 時:分 -->
-      <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
-      <div class="text-sm">${o.items}</div>
+      <div class="border-t border-b my-2 py-2">
+        <p class="text-sm">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
+        <p class="text-sm">${pickupInfo}</p>
+        <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
+      </div>
+      <div class="border-t border-b my-2 py-2">
+        <p class="text-sm">餐點: ${o.items}</p>
+      </div>
       <div class="text-right">
         <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}">
           <span class="box">
@@ -263,8 +262,6 @@ function renderCards(){
         </button>
       </div>
     `;
-
-
 
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
@@ -291,6 +288,7 @@ function renderCards(){
     container.appendChild(card);
   });
 }
+
 
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next ? 1 : 0 };
