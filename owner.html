@@ -146,6 +146,7 @@ function formatPickupTimeToTaipei(pickupTime) {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit', // 包含秒數
+    hour12: false, // 強制使用 24 小時制
   }).format(localDate);
 
   // 使用正則表達式提取「時:分」
