@@ -249,7 +249,7 @@ function renderCards(){
     card.classList.add('card', cardClass);
     card.innerHTML = `
       <h3 class="text-xl font-medium">訂單編號: #${o.pickupNo}</h3>
-      <p class="text-sm">${o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${formattedPickupTime}`}</p> <!-- 顯示取餐時間並轉換為台北時區 -->
+      <p class="text-sm">${o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${formattedPickupTime}`}</p> <!-- 只顯示 時:分 -->
       <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
       <div class="text-sm">${o.items}</div>
       <div class="text-right">
