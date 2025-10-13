@@ -144,17 +144,23 @@ function onlyHHmm(pickupTime){
   return m ? m[1] : '';
 }
 
+
 // 使用台北時區格式化日期
 function formatDateToTaipei(date) {
+  // Ensure the date is correctly parsed
+  const localDate = new Date(date);
+  
   return new Intl.DateTimeFormat('zh-TW', {
     timeZone: 'Asia/Taipei',
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit', // Include seconds for full time display
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date(date));
+  }).format(localDate);
 }
+
 
 function setLastSync(){
   lastSync = nowTime();
