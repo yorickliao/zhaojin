@@ -200,21 +200,24 @@ function applyFilters(){
   const qRaw = (document.querySelector('#q').value || '').trim();
   const q = qRaw.startsWith('#') ? qRaw.slice(1) : qRaw;
   const chosenDate = document.querySelector('#datePicker').value || '';
+  
   let rows = ORDERS_ALL.filter(o => {
-    const s = String(o.pickupTime || '');
-    const dm = s.match(/(\d{4})[/-](\d{2})[/-](\d{2})/);
+    const createdAt = String(o.createdAt || '');
+    const dm = createdAt.match(/(\d{4})[/-](\d{2})[/-](\d{2})/);  // Matching the date format
     if (!dm) return false;
     const norm = `${dm[1]}-${dm[2]}-${dm[3]}`;
-    return norm === chosenDate;
+    return norm === chosenDate;  // Compare createdAt with selected date
   });
+
   if (q) {
-    rows = rows.filter(o=>{
+    rows = rows.filter(o => {
       const s = `${o.name || ''} ${o.phone || ''} ${o.items || ''} ${o.pickupNo || ''}`;
       return s.includes(q);
     });
   }
   ORDERS = rows;
 }
+
 
 function renderCards(){
   const container = document.querySelector('#ordersContainer');
