@@ -144,6 +144,18 @@ function onlyHHmm(pickupTime){
   return m ? m[1] : '';
 }
 
+// 使用台北時區格式化日期
+function formatDateToTaipei(date) {
+  return new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    hour: '2-digit',
+    minute: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(date));
+}
+
 function setLastSync(){
   lastSync = nowTime();
   const lastSyncEl = document.querySelector('#lastSync');
@@ -182,7 +194,6 @@ async function loadOrders(){
     isLoading = false;
   }
 }
-
 
 
 function applyFilters(){
@@ -261,7 +272,6 @@ function renderCards(){
     container.appendChild(card);
   });
 }
-
 
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next ? 1 : 0 };
