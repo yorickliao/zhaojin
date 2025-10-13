@@ -236,7 +236,13 @@ function renderCards() {
     const pickupInfo = o.diningType === 'dinein' 
       ? `桌號: ${o.pickupTime}` 
       : `餐點取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
-    
+
+    // 假設餐點用 "餐點名稱x數量" 格式，每個餐點分開顯示
+    const itemsList = o.items.split(',').map(item => {
+      const [name, quantity] = item.trim().split('x').map(part => part.trim());
+      return `${name} x${quantity}`;
+    }).join('<br>');  // 用 <br> 換行顯示每個餐點
+
     // 卡片 HTML 內容
     card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
@@ -247,7 +253,7 @@ function renderCards() {
         <p class="text-lg">姓名: ${o.name} | 電話: ${o.phone}</p>
       </div>
       <div class="border-t border-b my-2 py-2">
-        <p class="text-lg">餐點: ${o.items}</p>
+        <p class="text-lg">餐點: <br> ${itemsList}</p>
       </div>
       <div class="text-right">
         <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}">
@@ -260,7 +266,6 @@ function renderCards() {
         </button>
       </div>
     `;
-
 
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
@@ -287,6 +292,7 @@ function renderCards() {
     container.appendChild(card);
   });
 }
+
 
 
 
