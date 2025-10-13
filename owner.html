@@ -244,7 +244,7 @@ function renderCards(){
       : `取餐時間: ${onlyHHmm(o.pickupTime)}`;
     
     // 使用 formatDateToTaipei 函數將 pickupTime 格式化為台北時區
-    const formattedPickupTime = onlyHHmm(formatDateToTaipei(o.pickupTime));
+    const formattedPickupTime = formatDateToTaipei(o.pickupTime);
     
     card.classList.add('card', cardClass);
     card.innerHTML = `
