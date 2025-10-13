@@ -138,27 +138,19 @@ function todayLocal(){
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
-function onlyHHmm(pickupTime){
-  const s = String(pickupTime || '');
-  const m = s.match(/(\d{2}:\d{2})/);
-  return m ? m[1] : '';
-}
 
-
-// 使用台北時區格式化日期
-function formatDateToTaipei(date) {
-  // Ensure the date is correctly parsed
-  const localDate = new Date(date);
-  
-  return new Intl.DateTimeFormat('zh-TW', {
+function formatPickupTimeToTaipei(pickupTime) {
+  const localDate = new Date(pickupTime);
+  const formattedTime = new Intl.DateTimeFormat('zh-TW', {
     timeZone: 'Asia/Taipei',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit', // Include seconds for full time display
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    second: '2-digit', // 包含秒數
   }).format(localDate);
+
+  // 使用正則表達式提取「時:分」
+  const match = formattedTime.match(/(\d{2}):(\d{2})/);
+  return match ? `${match[1]}:${match[2]}` : ''; // 返回「時:分」
 }
 
 
@@ -242,17 +234,15 @@ function renderCards() {
     const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
     const pickupInfo = o.diningType === 'dinein' 
       ? `桌號: ${o.pickupTime}` 
-      : `餐點取餐時間: ${onlyHHmm(o.pickupTime)}`;
-
-    const formattedPickupTime = formatDateToTaipei(o.pickupTime);
-
+      : `餐點取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+    
     // 卡片 HTML 內容
     card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
       <h3 class="text-2xl font-semibold">訂單編號: #${o.pickupNo}</h3>
       <div class="border-t border-b my-2 py-2">
         <p class="text-xl">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
-        <p class="text-lg">${o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `餐點取餐時間: ${formattedPickupTime}`}</p>
+        <p class="text-lg">${pickupInfo}</p>
         <p class="text-lg">姓名: ${o.name} | 電話: ${o.phone}</p>
       </div>
       <div class="border-t border-b my-2 py-2">
@@ -269,6 +259,7 @@ function renderCards() {
         </button>
       </div>
     `;
+
 
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
