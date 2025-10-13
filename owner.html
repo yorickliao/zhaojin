@@ -118,7 +118,7 @@
   </main>
 
 <script>
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzTBnXJimoPMbiflJjMFlY5Wpqf7eXlouxzIJ_otD0v0pso4gzZ6r8d88LHineKAnO6/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxHL0KKwmdZHJoCGioKTFLcTIk1qc5k8pnKl7uPQlb0wqV-Mcjvtr6jqeis7KUDtcwrZw/exec';
 const FRONTEND_PASSWORD = "zhaojin";
 const API_KEY  = 'zhaojin';
 let ORDERS_ALL = [];
@@ -162,8 +162,9 @@ async function loadOrders(){
   isLoading = true;
   document.querySelector('#meta').textContent = '載入中…';
 
-  // 在這裡加上 apiKey 參數
-  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin`;  // 加入 apiKey 參數
+  const date = document.querySelector('#datePicker').value || '';  // 取得選擇的日期
+  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;  // 透過 date 參數傳遞到後端
+  
   try {
     const r = await fetch(url);
     const t = await r.text();
@@ -181,6 +182,7 @@ async function loadOrders(){
     isLoading = false;
   }
 }
+
 
 
 function applyFilters(){
@@ -206,14 +208,20 @@ function applyFilters(){
 function renderCards(){
   const container = document.querySelector('#ordersContainer');
   container.innerHTML = '';
+
   ORDERS.forEach(o => {
     const done = o.done === '1';
     const card = document.createElement('div');
-    card.classList.add('card', o.diningType === 'dinein' ? 'dinein' : 'takeout');
+
+    // 根據 diningType 設置不同樣式
+    const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
+    
     const pickupInfo = o.diningType === 'dinein' ? `桌號: ${o.pickupTime}` : `取餐時間: ${onlyHHmm(o.pickupTime)}`;
+
+    card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
       <h3 class="text-xl font-medium">訂單編號: #${o.pickupNo}</h3>
-      <p class="text-sm">${pickupInfo}</p>
+      <p class="text-sm">${pickupInfo}</p>  <!-- 顯示桌號或取餐時間 -->
       <p class="text-sm">姓名: ${o.name} | 電話: ${o.phone}</p>
       <div class="text-sm">${o.items}</div>
       <div class="text-right">
@@ -253,6 +261,7 @@ function renderCards(){
     container.appendChild(card);
   });
 }
+
 
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next ? 1 : 0 };
