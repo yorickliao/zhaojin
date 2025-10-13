@@ -120,6 +120,7 @@
 <script>
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzTBnXJimoPMbiflJjMFlY5Wpqf7eXlouxzIJ_otD0v0pso4gzZ6r8d88LHineKAnO6/exec';
 const FRONTEND_PASSWORD = "zhaojin";
+const API_KEY  = 'zhaojin';
 let ORDERS_ALL = [];
 let ORDERS = [];
 let isLoading = false;
@@ -160,7 +161,9 @@ async function loadOrders(){
   if (isLoading) return;
   isLoading = true;
   document.querySelector('#meta').textContent = '載入中…';
-  const url = `${ENDPOINT}?action=list&_=${Date.now()}`;
+
+  // 在這裡加上 apiKey 參數
+  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin`;  // 加入 apiKey 參數
   try {
     const r = await fetch(url);
     const t = await r.text();
@@ -178,6 +181,7 @@ async function loadOrders(){
     isLoading = false;
   }
 }
+
 
 function applyFilters(){
   const qRaw = (document.querySelector('#q').value || '').trim();
