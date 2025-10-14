@@ -52,9 +52,6 @@
     .chkbtn[aria-busy="true"] .state-default { display: none; }
     .chkbtn[aria-busy="true"] .state-loading { display: inline-flex; align-items: center; gap: .5rem; }
 
-    .row-done { opacity: .5; }
-
-    /* 完成抽屜 */
     .drawer-hidden { display: none; }
   </style>
 </head>
@@ -85,7 +82,7 @@
         <div class="flex items-center gap-3 flex-wrap">
           <button id="btnReload" class="px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800">刷新</button>
 
-          <!-- 新增：已完成訂單按鈕與徽章 -->
+          <!-- 已完成訂單按鈕與徽章 -->
           <button id="btnShowCompleted" class="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 inline-flex items-center gap-2">
             <span>已完成訂單</span>
             <span id="completedCount" class="px-2 py-0.5 text-xs rounded-full bg-slate-900 text-white">0</span>
@@ -106,7 +103,7 @@
     </div>
   </main>
 
-  <!-- 新增：完成訂單抽屜 -->
+  <!-- 完成訂單抽屜 -->
   <div id="completedDrawer" class="drawer-hidden fixed inset-0 z-40">
     <div id="completedBackdrop" class="absolute inset-0 bg-black/30"></div>
     <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl flex flex-col">
@@ -123,10 +120,9 @@ const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzd5wDZON1ilBfarYhd-VU
 const FRONTEND_PASSWORD = "zhaojin";
 const API_KEY  = 'zhaojin';
 let ORDERS_ALL = [];
-let ORDERS = [];
+let ORDERS = []; // 主畫面只放「未完成」訂單
 let isLoading = false;
 let refreshTimer = null;
-let paused = false;
 let autoRefresh = true;
 let lastSync = '--';
 
@@ -138,6 +134,10 @@ function todayLocal(){
   const m = String(d.getMonth()+1).padStart(2,'0');
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
+}
+
+function isDrawerOpen(){
+  return !document.getElementById('completedDrawer').classList.contains('drawer-hidden');
 }
 
 function formatPickupTimeToTaipei(pickupTime) {
@@ -173,9 +173,10 @@ async function loadOrders(){
     const d = JSON.parse(t);
     if (!d.ok) throw new Error(d.error || 'unknown');
     ORDERS_ALL = d.orders || [];
-    applyFilters();
-    renderCards();
+    applyFilters();            // 只保留未完成到 ORDERS
+    renderCards();             // 主畫面只顯示未完成
     updateCompletedCountBadge();
+    if (isDrawerOpen()) renderCompletedOrders(); // 抽屜開著就同步更新
     setLastSync();
     document.querySelector('#meta').textContent = `共 ${ORDERS.length} 筆　最後更新：${lastSync}`;
   } catch (e) {
@@ -187,15 +188,17 @@ async function loadOrders(){
 
 function applyFilters(){
   const chosenDate = document.querySelector('#datePicker').value || '';
-  let rows = ORDERS_ALL.filter(o => {
+  // 先篩選當日
+  let rowsToday = ORDERS_ALL.filter(o => {
     const createdAt = new Date(o.createdAt);
     const norm = createdAt.toISOString().split('T')[0];
     return norm === chosenDate;
   });
-  ORDERS = rows;
+  // 主畫面只顯示「未完成」
+  ORDERS = rowsToday.filter(o => !isDoneVal(o.done));
 }
 
-/* 新增：計算當日已完成清單與數量 */
+/* 當日已完成清單與數量 */
 function getCompletedToday(){
   const chosenDate = document.querySelector('#datePicker').value || '';
   return ORDERS_ALL.filter(o => {
@@ -219,107 +222,107 @@ function setLoading(btn, on){
   btn.disabled = !!on;
 }
 
+/* 產生訂單卡片（參數 useChecked 表示按鈕初始是否為已完成外觀） */
+function buildOrderCard(o, useChecked){
+  const done = isDoneVal(o.done);
+  const card = document.createElement('div');
+  const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';
+  const pickupInfo = o.diningType === 'dinein'
+    ? `桌號: ${o.pickupTime}`
+    : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+
+  const itemsList = String(o.items || '')
+    .split(/\r?\n/)
+    .map(item => {
+      const [name, quantity] = item.trim().split('x').map(s => s.trim());
+      if (!name) return '';
+      return `${name} x${quantity || 1}`;
+    })
+    .filter(Boolean)
+    .join('<br>');
+
+  // useChecked：主畫面傳 false（未完成），抽屜傳 true（已完成）
+  const isChecked = useChecked ? true : false;
+  const nextVal   = useChecked ? false : true; // 抽屜按一下→取消完成；主畫面按一下→設為完成
+
+  card.classList.add('card', cardClass);
+  card.innerHTML = `
+    <h3 class="text-3xl font-semibold">訂單編號: #${o.pickupNo}</h3>
+    <div class="border-t border-b my-2 py-2">
+      <p class="text-2xl">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
+      <p class="text-xl">${pickupInfo}</p>
+      <p class="text-xl">姓名: ${o.name} | 電話: ${o.phone}</p>
+    </div>
+    <div class="border-t border-b my-2 py-2">
+      <p class="text-xl">餐點: <br> ${itemsList}</p>
+    </div>
+    <div class="text-right flex items-center justify-end gap-4">
+      <span class="text-xl font-semibold">總計: $${o.total}</span>
+      <button class="chkbtn ${isChecked ? 'is-checked' : ''}" data-id="${o.id}" data-next="${nextVal ? '1' : '0'}" aria-pressed="${isChecked ? 'true':'false'}" aria-busy="false">
+        <span class="state-default inline-flex items-center gap-2">
+          <span class="box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+          <span>${isChecked ? '已完成' : '完成'}</span>
+        </span>
+        <span class="state-loading">
+          <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25"></circle>
+            <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
+          </svg>
+          <span>處理中…</span>
+        </span>
+      </button>
+    </div>
+  `;
+
+  const btn = card.querySelector('.chkbtn');
+  btn.addEventListener('click', async () => {
+    if (btn.disabled || btn.getAttribute('aria-busy')==='true') return;
+    const id = btn.dataset.id;
+    const next = btn.dataset.next === '1'; // 目標狀態
+    setLoading(btn, true);
+    try{
+      await apiSetDone(id, next);
+
+      // 本地資料同步
+      const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
+      if (iAll >= 0) ORDERS_ALL[iAll].done = next;
+
+      // 重新套用主畫面過濾（主畫面只顯示未完成）
+      applyFilters();
+      renderCards();
+
+      // 更新徽章與（若抽屜打開）抽屜內容
+      updateCompletedCountBadge();
+      if (isDrawerOpen()) renderCompletedOrders();
+    }catch(e){
+      alert('更新失敗：' + e.message);
+    }finally{
+      setLoading(btn, false);
+    }
+  });
+
+  return card;
+}
+
 function renderCards() {
   const container = document.querySelector('#ordersContainer');
   container.innerHTML = '';
-
   container.style.display = 'grid';
   container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
   container.style.gap = '16px';
 
+  // 主畫面只顯示「未完成」訂單，每張卡給一顆「完成」按鈕
   ORDERS.forEach(o => {
-    const done = isDoneVal(o.done);
-    const card = document.createElement('div');
-
-    const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';
-    const pickupInfo = o.diningType === 'dinein'
-      ? `桌號: ${o.pickupTime}`
-      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
-
-    const itemsList = String(o.items || '')
-      .split(/\r?\n/)
-      .map(item => {
-        const [name, quantity] = item.trim().split('x').map(s => s.trim());
-        if (!name) return '';
-        return `${name} x${quantity || 1}`;
-      })
-      .filter(Boolean)
-      .join('<br>');
-
-    card.classList.add('card', cardClass);
-    card.innerHTML = `
-      <h3 class="text-3xl font-semibold">訂單編號: #${o.pickupNo}</h3>
-      <div class="border-t border-b my-2 py-2">
-        <p class="text-2xl">${o.diningType === 'dinein' ? '內用' : '外帶'}</p>
-        <p class="text-xl">${pickupInfo}</p>
-        <p class="text-xl">姓名: ${o.name} | 電話: ${o.phone}</p>
-      </div>
-      <div class="border-t border-b my-2 py-2">
-        <p class="text-xl">餐點: <br> ${itemsList}</p>
-      </div>
-      <div class="text-right flex items-center justify-end gap-4">
-        <span class="text-xl font-semibold">總計: $${o.total}</span>
-        <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}" aria-pressed="${done ? 'true':'false'}" aria-busy="false">
-          <span class="state-default inline-flex items-center gap-2">
-            <span class="box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span>${done ? '已完成' : '完成'}</span>
-          </span>
-          <span class="state-loading">
-            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25"></circle>
-              <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
-            </svg>
-            <span>處理中…</span>
-          </span>
-        </button>
-      </div>
-    `;
-
-    // 完成切換事件
-    card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
-      const btn = ev.currentTarget;
-      if (btn.disabled || btn.getAttribute('aria-busy')==='true') return;
-
-      const id = btn.dataset.id;
-      const nextVal = btn.dataset.next === '1';
-
-      setLoading(btn, true);
-      try {
-        await apiSetDone(id, nextVal);
-
-        // 同步 o / ORDERS / ORDERS_ALL
-        o.done = nextVal;
-        const iCur = ORDERS.findIndex(x => String(x.id) === String(id));
-        if (iCur >= 0) ORDERS[iCur].done = nextVal;
-        const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
-        if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal;
-
-        // 更新按鈕 UI 與下一次切換值
-        btn.dataset.next = nextVal ? '0' : '1';
-        btn.classList.toggle('is-checked', nextVal);
-        btn.setAttribute('aria-pressed', nextVal ? 'true' : 'false');
-        const labelEl = btn.querySelector('.state-default span:last-child');
-        if (labelEl) labelEl.textContent = nextVal ? '已完成' : '完成';
-
-        // 更新完成數徽章（抽屜未開也要更新）
-        updateCompletedCountBadge();
-
-      } catch (e) {
-        alert('更新失敗：' + e.message);
-      } finally {
-        setLoading(btn, false);
-      }
-    });
-
-    container.appendChild(card);
+    const el = buildOrderCard(o, /*useChecked=*/false);
+    container.appendChild(el);
   });
 }
 
-/* 新增：渲染完成訂單抽屜內容 */
+/* 渲染完成訂單抽屜內容（每張卡也有切換按鈕，可取消完成） */
 function renderCompletedOrders(){
   const list = getCompletedToday();
   const container = document.querySelector('#completedContainer');
@@ -331,36 +334,7 @@ function renderCompletedOrders(){
   }
 
   list.forEach(o => {
-    const pickupInfo = o.diningType === 'dinein'
-      ? `桌號: ${o.pickupTime}`
-      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
-    const itemsList = String(o.items || '')
-      .split(/\r?\n/)
-      .map(item => {
-        const [name, quantity] = item.trim().split('x').map(s => s.trim());
-        if (!name) return '';
-        return `${name} x${quantity || 1}`;
-      })
-      .filter(Boolean)
-      .join('<br>');
-
-    const el = document.createElement('div');
-    el.className = 'card bg-white';
-    el.innerHTML = `
-      <div class="flex items-center justify-between">
-        <div class="text-lg font-semibold">#${o.pickupNo}</div>
-        <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">已完成</span>
-      </div>
-      <div class="mt-2 text-sm text-slate-700">
-        <div>${o.diningType === 'dinein' ? '內用' : '外帶'}・${pickupInfo}</div>
-        <div>姓名：${o.name} ・ 電話：${o.phone}</div>
-      </div>
-      <div class="mt-3 text-sm">
-        <div class="font-medium mb-1">餐點</div>
-        <div class="text-slate-800 leading-6">${itemsList}</div>
-      </div>
-      <div class="mt-3 text-right font-semibold">總計：${fmtMoney(o.total)}</div>
-    `;
+    const el = buildOrderCard(o, /*useChecked=*/true);
     container.appendChild(el);
   });
   updateCompletedCountBadge();
@@ -419,11 +393,8 @@ function isDoneVal(v){
     loadOrders();
   });
   document.getElementById('btnReload').addEventListener('click', loadOrders);
-  document.getElementById('datePicker').addEventListener('change', async ()=>{
-    await loadOrders();
-  });
+  document.getElementById('datePicker').addEventListener('change', loadOrders);
 
-  // 新增：完成清單抽屜開關
   document.getElementById('btnShowCompleted').addEventListener('click', openCompletedDrawer);
   document.getElementById('btnCloseCompleted').addEventListener('click', closeCompletedDrawer);
   document.getElementById('completedBackdrop').addEventListener('click', closeCompletedDrawer);
