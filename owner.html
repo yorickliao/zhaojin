@@ -235,7 +235,7 @@ function renderCards() {
     const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
     const pickupInfo = o.diningType === 'dinein' 
       ? `桌號: ${o.pickupTime}` 
-      : `餐點取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
 
     // 假設餐點用 "餐點名稱x數量" 格式，每個餐點分開顯示
     const itemsList = o.items.split(',').map(item => {
