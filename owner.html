@@ -43,6 +43,9 @@
       height: 160px;
     }
     @keyframes shimmer { 0%{background-position: 100% 0} 100%{background-position: -100% 0} }
+
+    /* 軟刷新：保持既有內容，只加淡淡的更新感 */
+    #ordersContainer.updating { opacity: .6; pointer-events: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -56,6 +59,14 @@
           <div class="text-xl font-semibold truncate">招金 訂單管理</div>
           <div class="text-xs text-slate-500">營業 16:00 - 20:00 ・ 自動每 15 秒更新</div>
         </div>
+      </div>
+      <!-- 顯示刷新微提示 -->
+      <div id="refreshHint" class="hidden items-center gap-2 text-xs text-slate-500">
+        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity=".25"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
+        </svg>
+        <span>同步中…</span>
       </div>
     </div>
   </header>
@@ -168,8 +179,20 @@ function signatureFor(date, arr){
 async function loadOrders(){
   if (isLoading) return;
   isLoading = true;
-  document.querySelector('#meta').textContent = '載入中…';
-  showSkeleton();
+
+  const metaEl = document.querySelector('#meta');
+  const hint = document.getElementById('refreshHint');
+  const listEl = document.querySelector('#ordersContainer');
+
+  metaEl.textContent = '載入中…';
+
+  // 只有第一次或當前沒有內容時顯示 skeleton；否則保留原清單並顯示「軟刷新」
+  const useSkeleton = listEl.children.length === 0;
+  if (useSkeleton) showSkeleton();
+  else {
+    listEl.classList.add('updating');
+    hint.classList.remove('hidden');
+  }
 
   const date = document.querySelector('#datePicker').value || '';
   const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
@@ -197,11 +220,14 @@ async function loadOrders(){
     updateCompletedCountBadge();
 
     setLastSync();
-    document.querySelector('#meta').textContent = `共 ${ORDERS.length} 筆　最後更新：${lastSync}`;
+    metaEl.textContent = `共 ${ORDERS.length} 筆　最後更新：${lastSync}`;
   } catch (e) {
-    document.querySelector('#meta').textContent = '載入失敗：' + e.message;
+    metaEl.textContent = '載入失敗：' + e.message;
   } finally {
     isLoading = false;
+    // 還原軟刷新狀態
+    listEl.classList.remove('updating');
+    hint.classList.add('hidden');
   }
 }
 
@@ -357,7 +383,6 @@ document.addEventListener('click', async (e)=>{
     const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
     if (iAll >= 0) ORDERS_ALL[iAll].done = next;
 
-    // 重算簽名，確保下次 loadOrders() 能偵測到已變更（此處我們直接重繪，簽名延後交給下一輪載入）
     applyFilters();
     renderCards();
     if (isDrawerOpen()) renderCompletedOrders();
@@ -414,7 +439,6 @@ function closeCompletedDrawer(){
   document.getElementById('btnCloseCompleted').addEventListener('click', closeCompletedDrawer);
   document.getElementById('completedBackdrop').addEventListener('click', closeCompletedDrawer);
 
-  // 首次載入
   loadOrders();
   startAutoRefresh();
 })();
