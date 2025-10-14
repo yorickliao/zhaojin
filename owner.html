@@ -48,12 +48,14 @@
     }
     .chkbtn.is-checked svg { opacity: 1; }
 
-    /* loading 文字/圖示切換 */
     .state-loading { display: none; }
     .chkbtn[aria-busy="true"] .state-default { display: none; }
     .chkbtn[aria-busy="true"] .state-loading { display: inline-flex; align-items: center; gap: .5rem; }
 
     .row-done { opacity: .5; }
+
+    /* 完成抽屜 */
+    .drawer-hidden { display: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -82,6 +84,13 @@
 
         <div class="flex items-center gap-3 flex-wrap">
           <button id="btnReload" class="px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800">刷新</button>
+
+          <!-- 新增：已完成訂單按鈕與徽章 -->
+          <button id="btnShowCompleted" class="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 inline-flex items-center gap-2">
+            <span>已完成訂單</span>
+            <span id="completedCount" class="px-2 py-0.5 text-xs rounded-full bg-slate-900 text-white">0</span>
+          </button>
+
           <label class="inline-flex items-center gap-2 text-sm text-slate-700">
             <input id="autoRefresh" type="checkbox" class="w-4 h-4" checked>
             自動每 15 秒更新
@@ -96,6 +105,18 @@
       <div id="ordersContainer"></div>
     </div>
   </main>
+
+  <!-- 新增：完成訂單抽屜 -->
+  <div id="completedDrawer" class="drawer-hidden fixed inset-0 z-40">
+    <div id="completedBackdrop" class="absolute inset-0 bg-black/30"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl flex flex-col">
+      <div class="px-4 py-3 border-b flex items-center justify-between">
+        <div class="text-lg font-semibold">已完成訂單（<span id="completedHeaderCount">0</span>）</div>
+        <button id="btnCloseCompleted" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">關閉</button>
+      </div>
+      <div id="completedContainer" class="p-4 overflow-y-auto grow"></div>
+    </div>
+  </div>
 
 <script>
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzd5wDZON1ilBfarYhd-VUWADItFMw2-hFQGnkVtTW4oOvjLcUstrKpR98DcMNVNKPJuQ/exec';
@@ -138,20 +159,13 @@ function setLastSync(){
   if (lastSyncEl) lastSyncEl.textContent = lastSync;
 }
 
-function updateStatusPill(){
-  const pill = document.querySelector('#statusPill');
-  pill.textContent = paused ? '暫停接單' : '接受中';
-  pill.className = 'px-3 py-1 rounded-full text-sm font-medium ' + (paused ? 'bg-slate-200 text-slate-700' : 'bg-green-100 text-green-700');
-  document.querySelector('#togglePauseHeader').textContent = paused ? '恢復接單' : '暫停接單';
-}
-
 async function loadOrders(){
   if (isLoading) return;
   isLoading = true;
   document.querySelector('#meta').textContent = '載入中…';
 
   const date = document.querySelector('#datePicker').value || '';
-  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;
+  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
   try {
     const r = await fetch(url);
     const t = await r.text();
@@ -161,6 +175,7 @@ async function loadOrders(){
     ORDERS_ALL = d.orders || [];
     applyFilters();
     renderCards();
+    updateCompletedCountBadge();
     setLastSync();
     document.querySelector('#meta').textContent = `共 ${ORDERS.length} 筆　最後更新：${lastSync}`;
   } catch (e) {
@@ -180,7 +195,25 @@ function applyFilters(){
   ORDERS = rows;
 }
 
-/* 新增：通用的按鈕 loading 切換 */
+/* 新增：計算當日已完成清單與數量 */
+function getCompletedToday(){
+  const chosenDate = document.querySelector('#datePicker').value || '';
+  return ORDERS_ALL.filter(o => {
+    const createdAt = new Date(o.createdAt);
+    const norm = createdAt.toISOString().split('T')[0];
+    return norm === chosenDate && isDoneVal(o.done);
+  });
+}
+
+function updateCompletedCountBadge(){
+  const count = getCompletedToday().length;
+  const badge = document.querySelector('#completedCount');
+  const headerCount = document.querySelector('#completedHeaderCount');
+  if (badge) badge.textContent = String(count);
+  if (headerCount) headerCount.textContent = String(count);
+}
+
+/* 通用的按鈕 loading 切換 */
 function setLoading(btn, on){
   btn.setAttribute('aria-busy', on ? 'true' : 'false');
   btn.disabled = !!on;
@@ -227,7 +260,6 @@ function renderCards() {
       <div class="text-right flex items-center justify-end gap-4">
         <span class="text-xl font-semibold">總計: $${o.total}</span>
         <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}" aria-pressed="${done ? 'true':'false'}" aria-busy="false">
-          <!-- 預設狀態 -->
           <span class="state-default inline-flex items-center gap-2">
             <span class="box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -236,7 +268,6 @@ function renderCards() {
             </span>
             <span>${done ? '已完成' : '完成'}</span>
           </span>
-          <!-- 載入狀態 -->
           <span class="state-loading">
             <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25"></circle>
@@ -248,7 +279,7 @@ function renderCards() {
       </div>
     `;
 
-    // 事件
+    // 完成切換事件
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
       if (btn.disabled || btn.getAttribute('aria-busy')==='true') return;
@@ -273,6 +304,10 @@ function renderCards() {
         btn.setAttribute('aria-pressed', nextVal ? 'true' : 'false');
         const labelEl = btn.querySelector('.state-default span:last-child');
         if (labelEl) labelEl.textContent = nextVal ? '已完成' : '完成';
+
+        // 更新完成數徽章（抽屜未開也要更新）
+        updateCompletedCountBadge();
+
       } catch (e) {
         alert('更新失敗：' + e.message);
       } finally {
@@ -282,6 +317,62 @@ function renderCards() {
 
     container.appendChild(card);
   });
+}
+
+/* 新增：渲染完成訂單抽屜內容 */
+function renderCompletedOrders(){
+  const list = getCompletedToday();
+  const container = document.querySelector('#completedContainer');
+  container.innerHTML = '';
+
+  if (!list.length) {
+    container.innerHTML = `<div class="text-slate-500">今天沒有已完成訂單。</div>`;
+    return;
+  }
+
+  list.forEach(o => {
+    const pickupInfo = o.diningType === 'dinein'
+      ? `桌號: ${o.pickupTime}`
+      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+    const itemsList = String(o.items || '')
+      .split(/\r?\n/)
+      .map(item => {
+        const [name, quantity] = item.trim().split('x').map(s => s.trim());
+        if (!name) return '';
+        return `${name} x${quantity || 1}`;
+      })
+      .filter(Boolean)
+      .join('<br>');
+
+    const el = document.createElement('div');
+    el.className = 'card bg-white';
+    el.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="text-lg font-semibold">#${o.pickupNo}</div>
+        <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">已完成</span>
+      </div>
+      <div class="mt-2 text-sm text-slate-700">
+        <div>${o.diningType === 'dinein' ? '內用' : '外帶'}・${pickupInfo}</div>
+        <div>姓名：${o.name} ・ 電話：${o.phone}</div>
+      </div>
+      <div class="mt-3 text-sm">
+        <div class="font-medium mb-1">餐點</div>
+        <div class="text-slate-800 leading-6">${itemsList}</div>
+      </div>
+      <div class="mt-3 text-right font-semibold">總計：${fmtMoney(o.total)}</div>
+    `;
+    container.appendChild(el);
+  });
+  updateCompletedCountBadge();
+}
+
+/* 抽屜開關 */
+function openCompletedDrawer(){
+  document.getElementById('completedDrawer').classList.remove('drawer-hidden');
+  renderCompletedOrders();
+}
+function closeCompletedDrawer(){
+  document.getElementById('completedDrawer').classList.add('drawer-hidden');
 }
 
 async function apiSetDone(id, next){
@@ -310,20 +401,36 @@ function stopAutoRefresh() {
   if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
 }
 
-(async function init() {
-  document.querySelector('#controlsCard').classList.remove('hidden');
-  document.querySelector('#listCard').classList.remove('hidden');
-  document.querySelector('#datePicker').value = todayLocal();
-  await loadOrders();
-  startAutoRefresh();
-})();
-
 function isDoneVal(v){
   if (typeof v === 'boolean') return v;
   if (typeof v === 'number')  return v === 1;
   if (typeof v === 'string')  return v.toUpperCase() === 'TRUE' || v === '1';
   return false;
 }
+
+/* 事件綁定與初始化 */
+(function init() {
+  document.querySelector('#controlsCard').classList.remove('hidden');
+  document.querySelector('#listCard').classList.remove('hidden');
+  document.querySelector('#datePicker').value = todayLocal();
+
+  document.getElementById('btnToday').addEventListener('click', ()=>{
+    document.querySelector('#datePicker').value = todayLocal();
+    loadOrders();
+  });
+  document.getElementById('btnReload').addEventListener('click', loadOrders);
+  document.getElementById('datePicker').addEventListener('change', async ()=>{
+    await loadOrders();
+  });
+
+  // 新增：完成清單抽屜開關
+  document.getElementById('btnShowCompleted').addEventListener('click', openCompletedDrawer);
+  document.getElementById('btnCloseCompleted').addEventListener('click', closeCompletedDrawer);
+  document.getElementById('completedBackdrop').addEventListener('click', closeCompletedDrawer);
+
+  loadOrders();
+  startAutoRefresh();
+})();
 </script>
 </body>
 </html>
