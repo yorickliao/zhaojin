@@ -77,15 +77,6 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <div class="hidden sm:block text-sm text-slate-600">接單狀態：</div>
-        <span id="statusPill" class="px-3 py-1 rounded-full text-sm font-medium bg-slate-200 text-slate-700">讀取中</span>
-        <button id="togglePauseHeader" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">暫停接單</button>
-        <div class="hidden md:block text-sm text-slate-600">
-          最近同步：<span id="lastSync" class="font-medium">--</span>
-        </div>
-      </div>
-    </div>
   </header>
 
   <main class="mx-auto container-slim px-4 py-6">
@@ -95,9 +86,7 @@
           <label class="text-sm text-slate-600">查詢日期</label>
           <input id="datePicker" type="date" class="rounded-xl border border-slate-300 px-3 py-2">
           <button id="btnToday" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">今天</button>
-          <span class="hidden md:inline-block w-px h-6 bg-slate-200"></span>
-          <input id="q" type="search" placeholder="搜尋 姓名/電話/品項/#號碼"
-                 class="rounded-xl border border-slate-300 px-3 py-2 w-full md:w-80" />
+          
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
