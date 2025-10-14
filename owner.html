@@ -293,7 +293,7 @@ function renderCards() {
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next }; // ← 用 next（布林）
   
-    const r = await fetch(ENDPOINT, {
+  const r = await fetch(ENDPOINT, {
     method: 'POST',
     body: JSON.stringify(payload), // 會用 text/plain 發送 → 不觸發預檢
   });
