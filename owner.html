@@ -203,30 +203,31 @@ function renderCards() {
   const container = document.querySelector('#ordersContainer');
   container.innerHTML = '';
 
-  // 設定容器為 grid 佈局
   container.style.display = 'grid';
-  container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))'; // 自動排列，排滿一行後換行
-  container.style.gap = '16px'; // 卡片間的間隔
+  container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+  container.style.gap = '16px';
 
   ORDERS.forEach(o => {
     const done = isDoneVal(o.done);
     const card = document.createElement('div');
-    
-    // 根據 diningType 設置不同樣式
-    const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';  // 'dinein' 或 'takeout'
-    const pickupInfo = o.diningType === 'dinein' 
-      ? `桌號: ${o.pickupTime}` 
+
+    const cardClass = o.diningType === 'dinein' ? 'dinein' : 'takeout';
+    const pickupInfo = o.diningType === 'dinein'
+      ? `桌號: ${o.pickupTime}`
       : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
 
-    // 假設餐點用 "餐點名稱x數量" 格式，每個餐點分開顯示
-    const itemsList = o.items.split(',').map(item => {
-      const [name, quantity] = item.trim().split('x').map(part => part.trim());
-      return `${name} x${quantity}`;
-    }).join('<br>');  // 用 <br> 換行顯示每個餐點
+    // ⚠️ 你的後端 items 用換行 '\n'，這裡改成按換行切比較保險
+    const itemsList = String(o.items || '')
+      .split(/\r?\n/)
+      .map(item => {
+        const [name, quantity] = item.trim().split('x').map(s => s.trim());
+        if (!name) return '';
+        return `${name} x${quantity || 1}`;
+      })
+      .filter(Boolean)
+      .join('<br>');
 
-    // 卡片 HTML 內容
-    // 卡片 HTML 內容
-    card.classList.add('card', cardClass);  // 加入不同樣式類別
+    card.classList.add('card', cardClass);
     card.innerHTML = `
       <h3 class="text-3xl font-semibold">訂單編號: #${o.pickupNo}</h3>
       <div class="border-t border-b my-2 py-2">
@@ -250,32 +251,26 @@ function renderCards() {
       </div>
     `;
 
-
-
+    // 事件
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
       const id = btn.dataset.id;
-    
-      // 由 data-next 推出下一個狀態（布林）
-      const nextVal = btn.dataset.next === '1'; // '1' 代表要設為 true
-    
+
+      // 由 data-next 判斷下一個狀態（'1' 表示要設為 true）
+      const nextVal = btn.dataset.next === '1';
+
       btn.disabled = true;
       try {
-        // 寫回後端（記得 apiSetDone 的 value 要送布林）
         await apiSetDone(id, nextVal);
-    
-        // 1) 同步此卡片綁定的物件
+
+        // 同步 o / ORDERS / ORDERS_ALL
         o.done = nextVal;
-    
-        // 2) 同步 ORDERS（目前渲染來源）
         const iCur = ORDERS.findIndex(x => String(x.id) === String(id));
         if (iCur >= 0) ORDERS[iCur].done = nextVal;
-    
-        // 3) 同步 ORDERS_ALL（完整資料集）
         const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
         if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal;
-    
-        // 更新按鈕外觀與下一次要切換的值
+
+        // 更新按鈕 UI 與下一次切換值
         btn.dataset.next = nextVal ? '0' : '1';
         btn.classList.toggle('is-checked', nextVal);
         btn.setAttribute('aria-pressed', nextVal ? 'true' : 'false');
@@ -286,6 +281,12 @@ function renderCards() {
         btn.disabled = false;
       }
     });
+
+    // ⬅️ 之前遺漏：把卡片放進容器
+    container.appendChild(card);
+  }); // ⬅️ 關閉 forEach
+} // ⬅️ 關閉 renderCards
+
 
 
 
