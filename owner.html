@@ -167,7 +167,12 @@ async function loadOrders(){
   const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;  // 透過 date 參數傳遞到後端
   
   try {
-    const r = await fetch(url);
+    const r = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
     const t = await r.text();
     if (!r.ok) throw new Error(`HTTP ${r.status}: ${t.slice(0,120)}`);
     const d = JSON.parse(t);
