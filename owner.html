@@ -167,12 +167,7 @@ async function loadOrders(){
   const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;  // 透過 date 參數傳遞到後端
   
   try {
-    const r = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
+    const r = await fetch(url);
     const t = await r.text();
     if (!r.ok) throw new Error(`HTTP ${r.status}: ${t.slice(0,120)}`);
     const d = JSON.parse(t);
@@ -297,11 +292,12 @@ function renderCards() {
 
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next }; // ← 用 next（布林）
-  const r = await fetch(ENDPOINT, {
+  
+    const r = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload), // 會用 text/plain 發送 → 不觸發預檢
   });
+
   const t = await r.text();
   let d;
   try { d = JSON.parse(t); } catch { throw new Error('回應格式錯誤'); }
