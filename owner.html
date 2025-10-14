@@ -238,7 +238,7 @@ function renderCards() {
       : `餐點取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
 
     // 假設餐點用 "餐點名稱x數量" 格式，每個餐點分開顯示
-    const itemsList = o.items.split('\n').map(item => {
+    const itemsList = o.items.split(',').map(item => {
       const [name, quantity] = item.trim().split('x').map(part => part.trim());
       return `${name} x${quantity}`;
     }).join('<br>');  // 用 <br> 換行顯示每個餐點
