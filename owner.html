@@ -12,13 +12,8 @@
     .container-slim { max-width: 1100px; }
     .mono { font-variant-numeric: tabular-nums; }
 
-    .dinein {
-      background-color: #f0f8ff;
-    }
-
-    .takeout {
-      background-color: #ffe4e1;
-    }
+    .dinein { background-color: #f0f8ff; }
+    .takeout{ background-color: #ffe4e1; }
 
     .chkbtn {
       display: inline-flex;
@@ -32,10 +27,8 @@
       color: #0f172a;
       transition: .15s ease;
     }
-
-    .chkbtn:hover {
-      background: #f8fafc;
-    }
+    .chkbtn:hover { background: #f8fafc; }
+    .chkbtn[aria-busy="true"] { opacity: .65; pointer-events: none; }
 
     .chkbtn .box {
       width: 22px;
@@ -48,20 +41,19 @@
       color: #fff;
       transition: .15s ease;
     }
-
     .chkbtn.is-checked .box {
       background: linear-gradient(180deg, #a5b4fc 0%, #60a5fa 100%);
       border-color: transparent;
       color: #fff;
     }
+    .chkbtn.is-checked svg { opacity: 1; }
 
-    .chkbtn.is-checked svg {
-      opacity: 1;
-    }
+    /* loading 文字/圖示切換 */
+    .state-loading { display: none; }
+    .chkbtn[aria-busy="true"] .state-default { display: none; }
+    .chkbtn[aria-busy="true"] .state-loading { display: inline-flex; align-items: center; gap: .5rem; }
 
-    .row-done {
-      opacity: .5;
-    }
+    .row-done { opacity: .5; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -75,10 +67,9 @@
           <div class="text-xl font-semibold truncate">招金 訂單管理</div>
           <div class="text-xs text-slate-500">營業 16:00 - 20:00 ・ 自動每 15 秒更新</div>
         </div>
-      </div> <!-- 這裡閉合了 flex items-center -->
-    </div> <!-- 這裡閉合 container-slim -->
+      </div>
+    </div>
   </header>
-
 
   <main class="mx-auto container-slim px-4 py-6">
     <div id="controlsCard" class="card bg-white p-5 mb-5 hidden">
@@ -87,7 +78,6 @@
           <label class="text-sm text-slate-600">查詢日期</label>
           <input id="datePicker" type="date" class="rounded-xl border border-slate-300 px-3 py-2">
           <button id="btnToday" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">今天</button>
-          
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
@@ -135,15 +125,12 @@ function formatPickupTimeToTaipei(pickupTime) {
     timeZone: 'Asia/Taipei',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit', // 包含秒數
-    hour12: false, // 強制使用 24 小時制
+    second: '2-digit',
+    hour12: false,
   }).format(localDate);
-
-  // 使用正則表達式提取「時:分」
   const match = formattedTime.match(/(\d{2}):(\d{2})/);
-  return match ? `${match[1]}:${match[2]}` : ''; // 返回「時:分」
+  return match ? `${match[1]}:${match[2]}` : '';
 }
-
 
 function setLastSync(){
   lastSync = nowTime();
@@ -163,9 +150,8 @@ async function loadOrders(){
   isLoading = true;
   document.querySelector('#meta').textContent = '載入中…';
 
-  const date = document.querySelector('#datePicker').value || '';  // 取得選擇的日期
-  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;  // 透過 date 參數傳遞到後端
-  
+  const date = document.querySelector('#datePicker').value || '';
+  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=zhaojin&date=${date}`;
   try {
     const r = await fetch(url);
     const t = await r.text();
@@ -184,20 +170,21 @@ async function loadOrders(){
   }
 }
 
-
 function applyFilters(){
   const chosenDate = document.querySelector('#datePicker').value || '';
-  
   let rows = ORDERS_ALL.filter(o => {
     const createdAt = new Date(o.createdAt);
     const norm = createdAt.toISOString().split('T')[0];
     return norm === chosenDate;
   });
-
-  // 不需要再搜尋過濾
   ORDERS = rows;
 }
 
+/* 新增：通用的按鈕 loading 切換 */
+function setLoading(btn, on){
+  btn.setAttribute('aria-busy', on ? 'true' : 'false');
+  btn.disabled = !!on;
+}
 
 function renderCards() {
   const container = document.querySelector('#ordersContainer');
@@ -216,7 +203,6 @@ function renderCards() {
       ? `桌號: ${o.pickupTime}`
       : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
 
-    // ⚠️ 你的後端 items 用換行 '\n'，這裡改成按換行切比較保險
     const itemsList = String(o.items || '')
       .split(/\r?\n/)
       .map(item => {
@@ -240,13 +226,24 @@ function renderCards() {
       </div>
       <div class="text-right flex items-center justify-end gap-4">
         <span class="text-xl font-semibold">總計: $${o.total}</span>
-        <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}">
-          <span class="box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+        <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}" aria-pressed="${done ? 'true':'false'}" aria-busy="false">
+          <!-- 預設狀態 -->
+          <span class="state-default inline-flex items-center gap-2">
+            <span class="box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <span>${done ? '已完成' : '完成'}</span>
           </span>
-          <span>${done ? '已完成' : '完成'}</span>
+          <!-- 載入狀態 -->
+          <span class="state-loading">
+            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25"></circle>
+              <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
+            </svg>
+            <span>處理中…</span>
+          </span>
         </button>
       </div>
     `;
@@ -254,12 +251,12 @@ function renderCards() {
     // 事件
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
-      const id = btn.dataset.id;
+      if (btn.disabled || btn.getAttribute('aria-busy')==='true') return;
 
-      // 由 data-next 判斷下一個狀態（'1' 表示要設為 true）
+      const id = btn.dataset.id;
       const nextVal = btn.dataset.next === '1';
 
-      btn.disabled = true;
+      setLoading(btn, true);
       try {
         await apiSetDone(id, nextVal);
 
@@ -274,37 +271,31 @@ function renderCards() {
         btn.dataset.next = nextVal ? '0' : '1';
         btn.classList.toggle('is-checked', nextVal);
         btn.setAttribute('aria-pressed', nextVal ? 'true' : 'false');
-        btn.querySelector('span:last-child').textContent = nextVal ? '已完成' : '完成';
+        const labelEl = btn.querySelector('.state-default span:last-child');
+        if (labelEl) labelEl.textContent = nextVal ? '已完成' : '完成';
       } catch (e) {
         alert('更新失敗：' + e.message);
       } finally {
-        btn.disabled = false;
+        setLoading(btn, false);
       }
     });
 
-    // ⬅️ 之前遺漏：把卡片放進容器
     container.appendChild(card);
-  }); // ⬅️ 關閉 forEach
-} // ⬅️ 關閉 renderCards
-
-
-
+  });
+}
 
 async function apiSetDone(id, next){
-  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next }; // ← 用 next（布林）
-  
+  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next };
   const r = await fetch(ENDPOINT, {
     method: 'POST',
-    body: JSON.stringify(payload), // 會用 text/plain 發送 → 不觸發預檢
+    body: JSON.stringify(payload),
   });
-
   const t = await r.text();
   let d;
   try { d = JSON.parse(t); } catch { throw new Error('回應格式錯誤'); }
   if (!d.ok) throw new Error(d.error || 'set_done_failed');
   return d;
 }
-
 
 function startAutoRefresh() {
   stopAutoRefresh();
