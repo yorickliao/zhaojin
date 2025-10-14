@@ -255,14 +255,27 @@ function renderCards() {
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
       const id = btn.dataset.id;
-      const nextVal = btn.dataset.next === '1';
+    
+      // 由 data-next 推出下一個狀態（布林）
+      const nextVal = btn.dataset.next === '1'; // '1' 代表要設為 true
+    
       btn.disabled = true;
       try {
+        // 寫回後端（記得 apiSetDone 的 value 要送布林）
         await apiSetDone(id, nextVal);
-        // 更新本地資料
-        const iAll = ORDERS_ALL.findIndex(x => x.id === id);
-        if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal; // ← 布林
-        // 即時更新按鈕與列樣式
+    
+        // 1) 同步此卡片綁定的物件
+        o.done = nextVal;
+    
+        // 2) 同步 ORDERS（目前渲染來源）
+        const iCur = ORDERS.findIndex(x => String(x.id) === String(id));
+        if (iCur >= 0) ORDERS[iCur].done = nextVal;
+    
+        // 3) 同步 ORDERS_ALL（完整資料集）
+        const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
+        if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal;
+    
+        // 更新按鈕外觀與下一次要切換的值
         btn.dataset.next = nextVal ? '0' : '1';
         btn.classList.toggle('is-checked', nextVal);
         btn.setAttribute('aria-pressed', nextVal ? 'true' : 'false');
@@ -274,22 +287,22 @@ function renderCards() {
       }
     });
 
-    container.appendChild(card);
-  });
-}
-
-
 
 
 async function apiSetDone(id, next){
-  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: nextVal }; // ← 布林
-  const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(payload) });
+  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next }; // ← 用 next（布林）
+  const r = await fetch(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
   const t = await r.text();
   let d;
   try { d = JSON.parse(t); } catch { throw new Error('回應格式錯誤'); }
   if (!d.ok) throw new Error(d.error || 'set_done_failed');
   return d;
 }
+
 
 function startAutoRefresh() {
   stopAutoRefresh();
