@@ -209,7 +209,7 @@ function renderCards() {
   container.style.gap = '16px'; // 卡片間的間隔
 
   ORDERS.forEach(o => {
-    const done = o.done === '1';
+    const done = isDoneVal(o.done);
     const card = document.createElement('div');
     
     // 根據 diningType 設置不同樣式
@@ -261,7 +261,7 @@ function renderCards() {
         await apiSetDone(id, nextVal);
         // 更新本地資料
         const iAll = ORDERS_ALL.findIndex(x => x.id === id);
-        if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal ? '1' : '0';
+        if (iAll >= 0) ORDERS_ALL[iAll].done = nextVal ? 'TRUE' : 'FALSE';
         // 即時更新按鈕與列樣式
         btn.dataset.next = nextVal ? '0' : '1';
         btn.classList.toggle('is-checked', nextVal);
@@ -282,7 +282,7 @@ function renderCards() {
 
 
 async function apiSetDone(id, next){
-  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next ? 1 : 0 };
+  const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next ? 'TRUE' : 'FALSE' };
   const r = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(payload) });
   const t = await r.text();
   let d;
@@ -311,6 +311,13 @@ function stopAutoRefresh() {
   await loadOrders();
   startAutoRefresh();
 })();
+
+function isDoneVal(v){
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number')  return v === 1;
+  if (typeof v === 'string')  return v === 'TRUE' || v === '1';
+  return false;
+}
 </script>
 </body>
 </html>
