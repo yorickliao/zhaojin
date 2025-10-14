@@ -244,6 +244,7 @@ function renderCards() {
     }).join('<br>');  // 用 <br> 換行顯示每個餐點
 
     // 卡片 HTML 內容
+    // 卡片 HTML 內容
     card.classList.add('card', cardClass);  // 加入不同樣式類別
     card.innerHTML = `
       <h3 class="text-2xl font-semibold">訂單編號: #${o.pickupNo}</h3>
@@ -255,7 +256,8 @@ function renderCards() {
       <div class="border-t border-b my-2 py-2">
         <p class="text-lg">餐點: <br> ${itemsList}</p>
       </div>
-      <div class="text-right">
+      <div class="text-right flex items-center justify-end gap-4">
+        <span class="text-lg font-semibold">總計: $${o.total}</span>
         <button class="chkbtn ${done ? 'is-checked' : ''}" data-id="${o.id}" data-next="${done ? '0' : '1'}">
           <span class="box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -266,6 +268,7 @@ function renderCards() {
         </button>
       </div>
     `;
+
 
     card.querySelector('.chkbtn').addEventListener('click', async (ev) => {
       const btn = ev.currentTarget;
