@@ -60,13 +60,19 @@
           <div class="text-xs text-slate-500">營業 16:00 - 20:00 ・ 自動每 15 秒更新</div>
         </div>
       </div>
-      <!-- 顯示刷新微提示 -->
-      <div id="refreshHint" class="hidden items-center gap-2 text-xs text-slate-500">
-        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity=".25"></circle>
-          <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
-        </svg>
-        <span>同步中…</span>
+      <!-- 右上角：接單狀態 + 停止/恢復 + 轉圈提示 -->
+      <div class="flex items-center gap-2">
+        <span id="pauseBadge" class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">接單中</span>
+        <button id="btnTogglePause" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">停止接單</button>
+
+        <!-- 顯示刷新微提示 -->
+        <div id="refreshHint" class="hidden items-center gap-2 text-xs text-slate-500">
+          <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity=".25"></circle>
+            <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
+          </svg>
+          <span>同步中…</span>
+        </div>
       </div>
     </div>
   </header>
@@ -121,7 +127,7 @@
     </div>
   </div>
 
-  <!-- 售完管理抽屜 -->
+  <!-- 售完管理抽屜（無搜尋/套用列） -->
   <div id="soldoutDrawer" class="drawer-hidden fixed inset-0 z-40">
     <div id="soldoutBackdrop" class="absolute inset-0 bg-black/30"></div>
     <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl flex flex-col">
@@ -129,7 +135,6 @@
         <div class="text-lg font-semibold">售完管理</div>
         <button id="btnCloseSoldout" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">關閉</button>
       </div>
-
 
       <div class="p-4 overflow-y-auto grow">
         <div class="flex items-center justify-between mb-3">
@@ -155,6 +160,9 @@ let lastSync = '--';
 
 // 簡易快取簽名，避免資料未變時重繪
 const CACHE = { listKey: '', lastSig: '' };
+
+// 新增：接單狀態
+let IS_PAUSED = false;
 
 function fmtMoney(n){ return '$' + Number(n||0).toLocaleString('zh-Hant'); }
 function nowTime(){ const d = new Date(); return d.toLocaleString('zh-TW',{hour12:false}); }
@@ -185,6 +193,47 @@ function isDoneVal(v){
   if (typeof v === 'number')  return v === 1;
   if (typeof v === 'string')  return v.toUpperCase() === 'TRUE' || v === '1';
   return false;
+}
+
+/* 新增：停止/恢復接單 API 與 UI */
+async function apiSetPause(next){
+  const payload = { action:'set_pause', adminKey: FRONTEND_PASSWORD, value: next ? 1 : 0 };
+  const r = await fetch(ENDPOINT, { method:'POST', body: JSON.stringify(payload) });
+  const t = await r.text();
+  let d; try{ d = JSON.parse(t);}catch{ throw new Error('回應格式錯誤'); }
+  if (!d.ok) throw new Error(d.error || 'set_pause_failed');
+  IS_PAUSED = !!d.paused;
+  updatePauseUI();
+  return d;
+}
+
+function updatePauseUI(){
+  const badge = document.getElementById('pauseBadge');
+  const btn   = document.getElementById('btnTogglePause');
+  if (!badge || !btn) return;
+  if (IS_PAUSED){
+    badge.textContent = '已停止接單';
+    badge.className = 'px-2 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700';
+    btn.textContent = '恢復接單';
+  }else{
+    badge.textContent = '接單中';
+    badge.className = 'px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700';
+    btn.textContent = '停止接單';
+  }
+}
+
+async function detectPausedStatus(){
+  const date = document.querySelector('#datePicker')?.value || todayLocal();
+  const url  = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
+  try{
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d && d.error === 'paused') IS_PAUSED = true;
+    else if (d && d.ok === true) IS_PAUSED = false;
+  }catch{
+    // 忽略偵測錯誤
+  }
+  updatePauseUI();
 }
 
 /* Skeleton: 顯示 n 張骨架卡 */
@@ -225,8 +274,19 @@ async function loadOrders(){
   try {
     const r = await fetch(url);
     const t = await r.text();
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${t.slice(0,120)}`);
-    const d = JSON.parse(t);
+    let d; try{ d = JSON.parse(t);}catch{ throw new Error('回應格式錯誤'); }
+
+    // 新增：同步接單狀態與暫停處理
+    if (d && d.error === 'paused'){
+      IS_PAUSED = true;
+      updatePauseUI();
+      metaEl.textContent = '目前已停止接單';
+      return; // 暫停時不更新清單
+    } else {
+      IS_PAUSED = false;
+      updatePauseUI();
+    }
+
     if (!d.ok) throw new Error(d.error || 'unknown');
 
     ORDERS_ALL = d.orders || [];
@@ -468,6 +528,8 @@ document.addEventListener('click', async (e)=>{
     }
     return;
   }
+
+  // 售完 toggle（只用 name；sku 固定空字串）
   const tgl = e.target.closest('.so-toggle');
   if (tgl){
     const name = tgl.dataset.name || '';
@@ -479,12 +541,11 @@ document.addEventListener('click', async (e)=>{
       if (label) label.textContent = sold ? '售完' : '販售中';
     }catch(err){
       alert('更新失敗：' + err.message);
-      tgl.checked = !sold;
+      tgl.checked = !sold; // 還原
     }finally{
       tgl.disabled = false;
     }
   }
-  
 }, { passive: true });
 
 async function apiSetDone(id, next){
@@ -544,7 +605,23 @@ function closeSoldoutDrawer(){
   document.getElementById('btnCloseSoldout').addEventListener('click', closeSoldoutDrawer);
   document.getElementById('soldoutBackdrop').addEventListener('click', closeSoldoutDrawer);
   document.getElementById('btnRefreshMenu').addEventListener('click', renderMenuList);
-  
+
+  // 停止/恢復接單按鈕
+  document.getElementById('btnTogglePause').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnTogglePause');
+    btn.disabled = true;
+    try{
+      await apiSetPause(!IS_PAUSED);
+      if (!IS_PAUSED) await loadOrders(); // 從暫停恢復時刷新一次
+    }catch(err){
+      alert('操作失敗：' + err.message);
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  // 啟動時偵測一次狀態
+  detectPausedStatus();
 
   loadOrders();
   startAutoRefresh();
