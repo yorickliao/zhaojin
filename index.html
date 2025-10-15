@@ -652,7 +652,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
 
   /* 顏色依大類輪替：#242d47、#c9141a、#242d47、#c9141a、... */
-  const COLORS = ['#242d47', '#1144ed'];
+  const COLORS = ['#e60e2b', '#1144ed'];
   let ci = 0;
   renderCategory(MENU.hotpot, '#hotpotList', COLORS[ci++ % 2]);
   renderCategory(MENU.full,   '#fullList',   COLORS[ci++ % 2]);
