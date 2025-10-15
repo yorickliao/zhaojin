@@ -98,7 +98,7 @@
                   class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900">
           </select>
           <p id="pickupHint" class="text-xs text-slate-500 mt-1">營業時段：16:00–20:00；每 15 分鐘一個時段。</p>
-          <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp">目前非可取時段，您仍可下單，但將自動安排至下一個可取時段。</p>
+          <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp">目前非可取餐時段，您仍可下單，但將自動安排至下一個可取時段。</p>
         </div>
 
         <!-- 內用：桌號 -->
@@ -166,7 +166,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxTtrXkCFN2jQjCTVOW1AfxUEKC2CbhN8Kg098Clj29S0TVfL0dpzdDH1RV4BS3xm4WLQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxPUORCVfBpz7C9l3l8eC7-0ItcMiQrFtiN7f5lAAWwL2oVat1Xv7GST55HgRh7P4wuzA/exec';
 const API_KEY  = 'zhaojin';
 
 /* === 工具 & 狀態 === */
@@ -174,13 +174,6 @@ const el = s => document.querySelector(s);
 const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
 const pad2 = n => String(n).padStart(2, '0');
 const state = { cart: [], slots: [] };
-
-/* 新增：API 錯誤訊息對應（paused → 目前商家停止接單） */
-function mapApiError(errCode, serverMessage){
-  const code = String(errCode || '').toLowerCase();
-  if (code === 'paused') return '目前商家停止接單';
-  return serverMessage || '送單失敗，請稍後再試';
-}
 
 /* === 參數：營業時間 === */
 const BUSINESS = { startHour:16, endHour:20, intervalMin:15 };
@@ -240,22 +233,19 @@ const MENU = {
   ],
 };
 
-/* === Render：分類卡片（加入 color 參數，不改你其它流程） === */
-function renderCategory(list, targetId, color){
+/* === Render：分類卡片 === */
+function renderCategory(list, targetId){
   const root = el(targetId); root.innerHTML='';
   list.forEach(item=>{
     const card=document.createElement('div');
     card.className='card bg-white p-4 flex flex-col';
     card.innerHTML=`
       <div class="flex items-start justify-between gap-3">
-        <div><h3 class="text-lg font-semibold" style="color:${color}">${item.name}</h3></div>
+        <div><h3 class="text-lg font-semibold">${item.name}</h3></div>
         <div class="text-right font-semibold mono">${money(item.price)}</div>
       </div>
       <div class="mt-4 flex justify-end">
-        <button class="choose-btn btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800"
-                data-name="${item.name}" data-sku="">
-          選擇
-        </button>
+        <button class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">選擇</button>
       </div>`;
     card.querySelector('button').addEventListener('click', ()=> openItemModal(item));
     root.appendChild(card);
@@ -265,55 +255,43 @@ function renderCategory(list, targetId, color){
 /* === 選項彈窗（僅鍋燒系列顯示主食，其餘只有數量與備註） === */
 let currentItem = null;
 function openItemModal(item){
-  // 開窗前再次檢查售完（不干擾原流程）
-  checkSoldOutByName(item.name).then(sold=>{
-    if (sold) {
-      alert('此品項已售完');
-      enforceSoldOutOnMenu(true); // 立刻反映 UI
-      return;
-    }
-    currentItem = item;
-    ensureItemModal();
-    document.body.classList.add('overflow-hidden');
+  currentItem = item;
+  ensureItemModal();
+  document.body.classList.add('overflow-hidden');
 
-    el('#pmTitle').textContent = item.name;
+  el('#pmTitle').textContent = item.name;
 
-    const stapleWrap = el('#pmStapleWrap');
-    const stapleSel  = el('#pmStaple');
-    const needStaple = !!item.requireStaple;
-    stapleWrap.style.display = needStaple ? '' : 'none';
-    stapleSel.innerHTML='';
-    if (needStaple) {
-      HOTPOT_STAPLES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o); });
-    }
+  const stapleWrap = el('#pmStapleWrap');
+  const stapleSel  = el('#pmStaple');
+  const needStaple = !!item.requireStaple;
+  stapleWrap.style.display = needStaple ? '' : 'none';
+  stapleSel.innerHTML='';
+  if (needStaple) {
+    HOTPOT_STAPLES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o); });
+  }
 
-    el('#pmRemark').value = '';
+  el('#pmRemark').value = '';
 
-    const qtyInput = el('#pmQty'); qtyInput.value = 1;
-    const updatePmSubtotal = ()=>{
-      const qty = Math.max(1, parseInt(qtyInput.value)||1);
-      const subtotal = item.price * qty;
-      el('#pmSubtotal').textContent = money(subtotal);
-    };
-    el('#pmDec').onclick = ()=>{ qtyInput.value = Math.max(1, (parseInt(qtyInput.value)||1) - 1); updatePmSubtotal(); };
-    el('#pmInc').onclick = ()=>{ qtyInput.value = (parseInt(qtyInput.value)||1) + 1; updatePmSubtotal(); };
-    qtyInput.oninput = updatePmSubtotal;
-    updatePmSubtotal();
+  const qtyInput = el('#pmQty'); qtyInput.value = 1;
+  const updatePmSubtotal = ()=>{
+    const qty = Math.max(1, parseInt(qtyInput.value)||1);
+    const subtotal = item.price * qty;
+    el('#pmSubtotal').textContent = money(subtotal);
+  };
+  el('#pmDec').onclick = ()=>{ qtyInput.value = Math.max(1, (parseInt(qtyInput.value)||1) - 1); updatePmSubtotal(); };
+  el('#pmInc').onclick = ()=>{ qtyInput.value = (parseInt(qtyInput.value)||1) + 1; updatePmSubtotal(); };
+  qtyInput.oninput = updatePmSubtotal;
+  updatePmSubtotal();
 
-    el('#pmAdd').onclick = async ()=>{
-      // 加入前再確認一次，避免 race condition
-      const sold = await checkSoldOutByName(item.name);
-      if (sold) { alert('此品項已售完'); enforceSoldOutOnMenu(true); return; }
+  el('#pmAdd').onclick = ()=>{
+    const qty    = Math.max(1, parseInt(qtyInput.value)||1);
+    const staple = needStaple ? el('#pmStaple').value : '';
+    const remark = (el('#pmRemark')?.value || '').trim();
+    addToCart({ item, qty, remark, staple, needStaple });
+    closeItemModal();
+  };
 
-      const qty    = Math.max(1, parseInt(qtyInput.value)||1);
-      const staple = needStaple ? el('#pmStaple').value : '';
-      const remark = (el('#pmRemark')?.value || '').trim();
-      addToCart({ item, qty, remark, staple, needStaple });
-      closeItemModal();
-    };
-
-    el('#itemModal').classList.remove('hidden');
-  });
+  el('#itemModal').classList.remove('hidden');
 }
 function closeItemModal(){
   el('#itemModal')?.classList.add('hidden');
@@ -326,7 +304,7 @@ function ensureItemModal(){
   wrap.className = 'fixed inset-0 z-40 hidden scroll-y';
   wrap.innerHTML = `
     <div class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 min-h-full flex items-start justify中心 py-6 px-3">
+    <div class="relative z-10 min-h-full flex items-start justify-center py-6 px-3">
       <div class="w-full max-w-2xl card bg-white p-6 max-h-[85vh] scroll-y">
         <div class="flex items-start justify-between">
           <div class="min-w-0">
@@ -349,7 +327,7 @@ function ensureItemModal(){
 
         <div class="mt-5">
           <label class="text-sm text-slate-600">數量</label>
-          <div class="mt-1 flex items中心 gap-2">
+          <div class="mt-1 flex items-center gap-2">
             <button id="pmDec" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">-</button>
             <input id="pmQty" type="number" min="1" value="1" class="w-20 text-center border border-slate-300 rounded-xl py-2 bg-white text-slate-900" />
             <button id="pmInc" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">+</button>
@@ -468,7 +446,7 @@ async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
   if (tableNo) body.tableNo = tableNo;
   const r = await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) });
   const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('送單失敗，請稍後再試'); }
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
   return d;
 }
 async function apiConfirm(order){
@@ -478,7 +456,7 @@ async function apiConfirm(order){
     body: JSON.stringify({ apiKey: API_KEY, action: 'confirm', order })
   });
   const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('送單失敗，請稍後再試'); }
+  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
   return d;
 }
 async function apiSync(){
@@ -517,8 +495,11 @@ async function onSubmitOrder(e) {
     const autoSlot = (diningType === 'takeout' && !userChosenISO) ? chooseEarliestSlot() : null;
     const pickupAtHintISO = (userChosenISO || (autoSlot ? autoSlot.toISOString() : ''));
 
-    const createdAt = new Date();
+    // 獲取當前的訂單創建時間
+    const createdAt = new Date(); // 當前時間作為訂單創建時間
     const selectedPickupTime = new Date(pickupAtHintISO);
+
+    // 檢查選擇的取餐時間是否早於創建時間
     if (selectedPickupTime < createdAt) {
       showErr('取餐時間不能早於訂單創建時間。');
       return;
@@ -537,16 +518,18 @@ async function onSubmitOrder(e) {
       orderId,
       customer: { name, phone },
       items, subtotal, total: subtotal,
-      createdAt: createdAt.toISOString(),
+      createdAt: createdAt.toISOString(), // 設置創建時間
       source: 'zhaojin-web',
       diningType,
       tableNo: tableNo || null,
       desiredPickupTime: (diningType === 'takeout' ? (pickupAtHintISO || null) : null)
     };
 
+    // A) reserve：依你的 GAS 新版，外帶用顧客自選時段；內用不寫時間
     const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
-    if (!res.ok) { showErr(mapApiError(res.error, res.message)); return; }
+    if (!res.ok) { showErr(`送單失敗：${res.error || 'reserve_failed'}`); return; }
 
+    // 成功畫面（共用一個 Modal，條件顯示）
     el('#pickupNoText').textContent = String(res.pickupNo ?? '');
     if (diningType === 'takeout') {
       el('#successTakeoutTime').classList.remove('hidden');
@@ -559,6 +542,7 @@ async function onSubmitOrder(e) {
     }
     el('#successModal').classList.remove('hidden');
 
+    // B) 背景 confirm → 成功後再 sync
     (async () => {
       try {
         const c = await apiConfirm(order);
@@ -569,9 +553,10 @@ async function onSubmitOrder(e) {
     state.cart = []; renderCart();
 
   } catch (err) {
-    el('#formError').textContent = '送單失敗：' + (err?.message || '請稍後再試');
+    el('#formError').textContent = '送單失敗：' + err.message;
   } finally { setBusy(false); }
 }
+
 
 /* === 用餐方式切換（顯示外帶時段 / 內用桌號） === */
 function onDiningTypeChange(){
@@ -585,63 +570,6 @@ function onDiningTypeChange(){
   }
 }
 
-/* === 售完狀態（只新增，不動你現有流程） === */
-let SOLDOUT_CACHE = { ts: 0, byName: new Map(), bySku: new Map() };
-const SOLDOUT_TTL_MS = 30 * 1000;
-
-async function fetchMenuStatus(force=false){
-  const now = Date.now();
-  if (!force && (now - SOLDOUT_CACHE.ts) < SOLDOUT_TTL_MS) return SOLDOUT_CACHE;
-  const url = `${ENDPOINT}?action=menu&_=${now}&apiKey=${API_KEY}`;
-  const r = await fetch(url);
-  const t = await r.text();
-  let d; try{ d = JSON.parse(t);}catch{ throw new Error('menu 回應格式錯誤'); }
-  if (!d.ok) throw new Error(d.error||'menu_failed');
-
-  const byName = new Map();
-  const bySku  = new Map();
-  for(const it of d.items||[]){
-    if (it.name) byName.set(String(it.name), !!it.soldOut);
-    if (it.sku)  bySku.set(String(it.sku),  !!it.soldOut);
-  }
-  SOLDOUT_CACHE = { ts: now, byName, bySku };
-  return SOLDOUT_CACHE;
-}
-async function isSoldOut(name, sku=''){
-  const { byName, bySku } = await fetchMenuStatus(false);
-  return sku ? !!bySku.get(sku) : !!byName.get(name);
-}
-async function checkSoldOutByName(name){ return isSoldOut(name, ''); }
-
-/* 把售完狀態套用到「選擇」按鈕（不改你原本事件，只是 disabled + 徽章） */
-async function enforceSoldOutOnMenu(force=false){
-  try{
-    const { byName, bySku } = await fetchMenuStatus(force);
-    document.querySelectorAll('.choose-btn').forEach(btn=>{
-      const name = btn.dataset.name || '';
-      const sku  = btn.dataset.sku  || '';
-      const sold = sku ? !!bySku.get(sku) : !!byName.get(name);
-      btn.disabled = sold;
-      if (sold) {
-        btn.setAttribute('aria-disabled','true');
-        btn.classList.add('opacity-60','pointer-events-none');
-        const card = btn.closest('.card');
-        if (card && !card.querySelector('.sold-badge')) {
-          const badge = document.createElement('span');
-          badge.className = 'sold-badge ml-2 px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600';
-          badge.textContent = '售完';
-          card.querySelector('.text-right')?.appendChild(badge);
-        }
-      } else {
-        btn.removeAttribute('aria-disabled');
-        btn.classList.remove('opacity-60','pointer-events-none');
-      }
-    });
-  }catch(err){
-    console.warn('套用售完狀態失敗：', err);
-  }
-}
-
 /* === Init === */
 function initSlots(){
   state.slots = generateSlots(new Date());
@@ -651,17 +579,11 @@ function initSlots(){
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
 
-  /* 顏色依大類輪替：#242d47、#c9141a、#242d47、#c9141a、... */
-  const COLORS = ['#e60e2b', '#1144ed'];
-  let ci = 0;
-  renderCategory(MENU.hotpot, '#hotpotList', COLORS[ci++ % 2]);
-  renderCategory(MENU.full,   '#fullList',   COLORS[ci++ % 2]);
-  renderCategory(MENU.soup,   '#soupList',   COLORS[ci++ % 2]);
-  renderCategory(MENU.tea,    '#teaList',    COLORS[ci++ % 2]);
-  renderCategory(MENU.donut,  '#donutList',  COLORS[ci++ % 2]);
-
-  // 初始套用一次售完狀態，之後每 30 秒刷新一次
-  (async ()=>{ await enforceSoldOutOnMenu(true); setInterval(()=> enforceSoldOutOnMenu(false), SOLDOUT_TTL_MS); })();
+  renderCategory(MENU.hotpot,'#hotpotList');
+  renderCategory(MENU.full,'#fullList');
+  renderCategory(MENU.soup,'#soupList');
+  renderCategory(MENU.tea,'#teaList');
+  renderCategory(MENU.donut,'#donutList');
 
   renderCart();
   el('#clearCart').addEventListener('click',()=>{state.cart=[];renderCart();});
@@ -677,7 +599,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   onDiningTypeChange();
 
-  // 每分鐘刷新可選時段
+  // 每分鐘刷新可選時段（避免長時間停留頁面造成時段過舊）
   setInterval(initSlots, 60*1000);
 });
 </script>
