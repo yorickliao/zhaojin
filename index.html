@@ -548,45 +548,50 @@ async function checkSoldOutByName(name){ return isSoldOut(name); }
 /* 把售完狀態套用到「選擇」按鈕（不改你原本事件，只是 disabled + 徽章） */
 
 
-async function enforceSoldOutOnMenu(force=false){
-  try{
+async function enforceSoldOutOnMenu(force = false) {
+  try {
     const { byName, bySku } = await fetchMenuStatus(force);
-    document.querySelectorAll('.choose-btn').forEach(btn=>{
+
+    document.querySelectorAll('.choose-btn').forEach(btn => {
       const name = btn.dataset.name || '';
       const sku  = btn.dataset.sku  || '';
       const sold = sku ? !!bySku.get(sku) : !!byName.get(name);
 
-      // 「選擇」按鈕外層，就是你 renderCategory 裡的 <div class="mt-4 flex justify-end">...</div>
-      const wrap = btn.parentElement;
+      const wrap = btn.parentElement; // <div class="mt-4 flex justify-end">...</div>
       if (!wrap) return;
 
-      let badge = wrap.querySelector('.sold-badge');
+      let soldPill = wrap.querySelector('.sold-pill');
 
       if (sold) {
-        // 禁用按鈕 + 視覺狀態
-        btn.disabled = true;
-        btn.setAttribute('aria-disabled','true');
-        btn.classList.add('opacity-60','pointer-events-none');
+        // 隱藏原本「選擇」按鈕
+        btn.classList.add('hidden');
 
-        // 若還沒有徽章，建立在「選擇」按鈕左邊
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'sold-badge mr-2 px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600';
-          badge.textContent = '售完';
-          wrap.insertBefore(badge, btn);
+        // 若還沒有售完膠囊，建立一顆外觀與按鈕相近的「不可點」徽章
+        if (!soldPill) {
+          soldPill = document.createElement('span');
+          soldPill.className = [
+            'sold-pill',              // 供查找/移除
+            'inline-flex items-center justify-center',
+            'px-4 py-2',
+            'rounded-xl',
+            'border border-slate-300',
+            'bg-slate-100 text-slate-500',
+            'cursor-not-allowed select-none'
+          ].join(' ');
+          soldPill.textContent = '售完';
+          wrap.insertBefore(soldPill, btn); // 放在「選擇」左邊
         }
       } else {
-        // 解除禁用 + 移除徽章
-        btn.disabled = false;
-        btn.removeAttribute('aria-disabled');
-        btn.classList.remove('opacity-60','pointer-events-none');
-        if (badge) badge.remove();
+        // 可販售：顯示「選擇」，移除售完膠囊
+        btn.classList.remove('hidden');
+        if (soldPill) soldPill.remove();
       }
     });
-  }catch(err){
+  } catch (err) {
     console.warn('套用售完狀態失敗：', err);
   }
 }
+
 
 
 /* === Apps Script API：reserve + confirm + sync === */
