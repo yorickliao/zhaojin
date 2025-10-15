@@ -713,6 +713,12 @@ function initSlots(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
+  // 頁面載入就預先建立彈窗（避免第一次動態建 DOM 的延遲）
+  ensureItemModal();
+  
+  // 頁面載入就先把售完狀態拉回來快取（避免第一次點時才打 API）
+  fetchMenuStatus(true).catch(()=>{});
+
 
   renderCategory(MENU.hotpot,'#hotpotList');
   renderCategory(MENU.full,'#fullList');
