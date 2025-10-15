@@ -85,7 +85,7 @@
 
 <!-- 分類快速選擇列 -->
 <nav id="categoryBar"
-     class="sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b border-slate-200">
+     class="sticky z-40 bg-white/90 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-2">
     <div class="flex gap-2 overflow-x-auto no-scrollbar">
       <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
@@ -897,6 +897,25 @@ function observeActiveCategory(){
     const anchor = document.getElementById(`sec-${key}`);
     if (anchor) io.observe(anchor);
   });
+}
+
+/* 讓分類列永遠貼在 header 下方（動態量 header 高度） */
+function stickCategoryBar(){
+  const header = document.querySelector('header');
+  const bar = document.getElementById('categoryBar');
+  if (!header || !bar) return;
+  bar.style.top = (header.offsetHeight || 0) + 'px';
+}
+
+// 第一次載入、視窗尺寸改變、header 高度變動時都重算
+window.addEventListener('load', stickCategoryBar);
+window.addEventListener('resize', stickCategoryBar);
+{
+  const header = document.querySelector('header');
+  if (header && 'ResizeObserver' in window) {
+    const ro = new ResizeObserver(()=> stickCategoryBar());
+    ro.observe(header);
+  }
 }
 
 
