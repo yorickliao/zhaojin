@@ -130,18 +130,6 @@
         <button id="btnCloseSoldout" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">關閉</button>
       </div>
 
-      <div class="p-4 border-b">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input id="soName" placeholder="名稱（可留空）" class="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2">
-          <input id="soSku" placeholder="SKU（可留空）" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2">
-          <select id="soState" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2">
-            <option value="1">設為售完</option>
-            <option value="0">恢復販售</option>
-          </select>
-          <button id="btnSoApply" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2 hover:bg-slate-100">套用</button>
-        </div>
-        <div class="text-xs text-slate-500 mt-2">名稱或 SKU 至少填一個；若該品項不存在會自動新增一列。</div>
-      </div>
 
       <div class="p-4 overflow-y-auto grow">
         <div class="flex items-center justify-between mb-3">
@@ -434,11 +422,10 @@ async function renderMenuList(){
           <div class="w-10 text-slate-400">${i+1}</div>
           <div class="grow min-w-0">
             <div class="font-medium truncate">${it.name || '(未命名)'}</div>
-            <div class="text-xs text-slate-500">SKU：${it.sku || '-'}</div>
           </div>
           <div class="text-right">
             <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" class="so-toggle w-5 h-5" data-name="${it.name||''}" data-sku="${it.sku||''}" ${chk}>
+              <input type="checkbox" class="so-toggle w-5 h-5" data-name="${it.name||''}" ${chk}>
               <span>${it.soldOut ? '售完' : '販售中'}</span>
             </label>
           </div>
@@ -449,6 +436,7 @@ async function renderMenuList(){
     box.innerHTML = `<div class="text-rose-600">讀取失敗：${err.message}</div>`;
   }
 }
+
 
 /* 事件委派：主畫面/抽屜完成切換＋售完切換 */
 function setLoading(btn, on){
@@ -480,26 +468,23 @@ document.addEventListener('click', async (e)=>{
     }
     return;
   }
-
-  // 售完 toggle
   const tgl = e.target.closest('.so-toggle');
   if (tgl){
     const name = tgl.dataset.name || '';
-    const sku  = tgl.dataset.sku  || '';
     const sold = tgl.checked;
     tgl.disabled = true;
     try{
-      await apiSetSoldOut({ name, sku, soldOut: sold });
-      // 文字同步
+      await apiSetSoldOut({ name, sku: '', soldOut: sold });
       const label = tgl.parentElement.querySelector('span');
       if (label) label.textContent = sold ? '售完' : '販售中';
     }catch(err){
       alert('更新失敗：' + err.message);
-      tgl.checked = !sold; // 還原
+      tgl.checked = !sold;
     }finally{
       tgl.disabled = false;
     }
   }
+  
 }, { passive: true });
 
 async function apiSetDone(id, next){
@@ -559,20 +544,7 @@ function closeSoldoutDrawer(){
   document.getElementById('btnCloseSoldout').addEventListener('click', closeSoldoutDrawer);
   document.getElementById('soldoutBackdrop').addEventListener('click', closeSoldoutDrawer);
   document.getElementById('btnRefreshMenu').addEventListener('click', renderMenuList);
-  document.getElementById('btnSoApply').addEventListener('click', async ()=>{
-    const name = document.getElementById('soName').value.trim();
-    const sku  = document.getElementById('soSku').value.trim();
-    const sold = document.getElementById('soState').value === '1';
-    if (!name && !sku) { alert('請至少填名稱或 SKU'); return; }
-    try{
-      await apiSetSoldOut({ name, sku, soldOut: sold });
-      await renderMenuList();
-      document.getElementById('soName').value='';
-      document.getElementById('soSku').value='';
-    }catch(err){
-      alert('更新失敗：' + err.message);
-    }
-  });
+  
 
   loadOrders();
   startAutoRefresh();
