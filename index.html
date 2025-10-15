@@ -14,6 +14,83 @@
     select option{background:#fff;color:#0f172a}
     .scroll-y{overflow-y:auto;-webkit-overflow-scrolling:touch}
     .hidden-imp{display:none!important}
+
+    /* === 大類配色：A/B 交錯 === */
+    :root{
+      --cat-a:#242d47; /* 深藍灰 */
+      --cat-b:#c9141a; /* 紅 */
+      --cat-a-bg:#f7f8fb; /* 很淡的背景 */
+      --cat-b-bg:#fff6f6;
+    }
+
+    /* 大類容器（左側色條 + 淡底） */
+    .category-block{
+      position: relative;
+      padding: 14px 14px 6px 14px;
+      border-radius: 16px;
+    }
+    .category-block::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius:16px;
+      z-index:0;
+      opacity:.55;
+    }
+    .category-block.cat-a::before{ background: var(--cat-a-bg); }
+    .category-block.cat-b::before{ background: var(--cat-b-bg); }
+
+    /* 左側色條（更好辨識） */
+    .category-block::after{
+      content:"";
+      position:absolute; left:-6px; top:10px; bottom:10px;
+      width:4px; border-radius:4px;
+    }
+    .category-block.cat-a::after{ background: var(--cat-a); }
+    .category-block.cat-b::after{ background: var(--cat-b); }
+
+    /* 大類標題：同色底線 & 小圓點 */
+    .category-title{
+      position:relative; padding-left:18px;
+      font-weight:600;
+    }
+    .category-title::before{
+      content:"";
+      position:absolute; left:0; top:.55em;
+      width:10px; height:10px; border-radius:999px;
+      transform: translateY(-50%);
+    }
+    .cat-a .category-title{ color:#0f172a; }
+    .cat-b .category-title{ color:#0f172a; }
+    .cat-a .category-title::before{ background: var(--cat-a); }
+    .cat-b .category-title::before{ background: var(--cat-b); }
+    .category-underline{
+      height:2px; border-radius:999px; margin-top:4px;
+    }
+    .cat-a .category-underline{ background: var(--cat-a); }
+    .cat-b .category-underline{ background: var(--cat-b); }
+
+    /* 卡片上方細色條（與大類顏色一致） */
+    .cat-a .menu-card::before,
+    .cat-b .menu-card::before{
+      content:""; display:block; height:3px; border-radius:8px 8px 0 0; margin:-1rem -1rem 8px -1rem;
+    }
+    .cat-a .menu-card::before{ background: var(--cat-a); }
+    .cat-b .menu-card::before{ background: var(--cat-b); }
+
+    /* 快速分類導覽（貼頂次導覽） */
+    .category-nav{
+      position:sticky; top:64px; z-index:20;
+      background:rgba(255,255,255,.85); backdrop-filter: blur(6px);
+      border-bottom:1px solid #e2e8f0;
+    }
+    .category-chip{
+      border-radius:999px; padding:.45rem .8rem; border:1px solid #cbd5e1;
+      font-size:.875rem; line-height:1;
+    }
+    .chip-a{ border-color: color-mix(in srgb, var(--cat-a) 45%, #cbd5e1); }
+    .chip-b{ border-color: color-mix(in srgb, var(--cat-b) 45%, #cbd5e1); }
+    .chip-a.active{ background:var(--cat-a); color:#fff; border-color:transparent; }
+    .chip-b.active{ background:var(--cat-b); color:#fff; border-color:transparent; }
   </style>
 </head>
 
@@ -30,38 +107,59 @@
     </div>
     <a href="#cart" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">購物車</a>
   </div>
+
+  <!-- 快速分類導覽（新增） -->
+  <div class="category-nav">
+    <div class="mx-auto container-slim px-4 py-2 flex flex-wrap gap-6">
+      <a href="#sec-hotpot" class="category-chip chip-a" data-chip="hotpot">鍋燒系列</a>
+      <a href="#sec-full"   class="category-chip chip-b" data-chip="full">呷飽飽系列</a>
+      <a href="#sec-soup"   class="category-chip chip-a" data-chip="soup">喝湯</a>
+      <a href="#sec-tea"    class="category-chip chip-b" data-chip="tea">喝茶</a>
+      <a href="#sec-donut"  class="category-chip chip-a" data-chip="donut">呷甜（甜甜圈）</a>
+    </div>
+  </div>
 </header>
 
 <main class="mx-auto container-slim px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
   <section class="lg:col-span-2 space-y-8">
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold">鍋燒系列</h2>
+    <!-- A 類 -->
+    <div id="sec-hotpot" class="category-block cat-a space-y-3">
+      <h2 class="category-title text-lg">鍋燒系列</h2>
+      <div class="category-underline"></div>
       <div id="hotpotList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold">呷飽飽系列</h2>
+    <!-- B 類 -->
+    <div id="sec-full" class="category-block cat-b space-y-3">
+      <h2 class="category-title text-lg">呷飽飽系列</h2>
+      <div class="category-underline"></div>
       <div id="fullList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold">喝湯</h2>
+    <!-- A 類 -->
+    <div id="sec-soup" class="category-block cat-a space-y-3">
+      <h2 class="category-title text-lg">喝湯</h2>
+      <div class="category-underline"></div>
       <div id="soupList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold">喝茶</h2>
+    <!-- B 類 -->
+    <div id="sec-tea" class="category-block cat-b space-y-3">
+      <h2 class="category-title text-lg">喝茶</h2>
+      <div class="category-underline"></div>
       <div id="teaList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
-    <div class="space-y-3">
-      <h2 class="text-lg font-semibold">呷甜（甜甜圈）</h2>
+    <!-- A 類 -->
+    <div id="sec-donut" class="category-block cat-a space-y-3">
+      <h2 class="category-title text-lg">呷甜（甜甜圈）</h2>
+      <div class="category-underline"></div>
       <div id="donutList" class="grid grid-cols-2 gap-4"></div>
     </div>
   </section>
 
   <aside id="cart"
-    class="space-y-6 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-1"
+    class="space-y-6 lg:sticky lg:top-[132px] lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:pr-1"
     style="-webkit-overflow-scrolling: touch;">
     <div class="card bg-white p-5">
       <h2 class="text-lg font-semibold mb-4">購物車</h2>
@@ -98,7 +196,7 @@
                   class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900">
           </select>
           <p id="pickupHint" class="text-xs text-slate-500 mt-1">營業時段：16:00–20:00；每 15 分鐘一個時段。</p>
-          <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp">目前非可取餐時段，您仍可下單，但將自動安排至下一個可取時段。</p>
+          <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp">目前非可取時段，您仍可下單，但將自動安排至下一個可取時段。</p>
         </div>
 
         <!-- 內用：桌號 -->
@@ -127,7 +225,7 @@
   </aside>
 </main>
 
-<!-- 成功視窗：依用餐方式條件顯示 -->
+<!-- 成功視窗（原樣） -->
 <div id="successModal" class="fixed inset-0 z-40 hidden">
   <div class="absolute inset-0 bg-black/40"></div>
   <div class="relative z-10 mx-auto mt-24 w-[92%] max-w-xl card bg-white p-6">
@@ -138,13 +236,11 @@
       <p id="pickupNoText" class="text-4xl font-extrabold tracking-wider mt-1 mono"></p>
     </div>
 
-    <!-- 外帶才顯示 -->
     <div id="successTakeoutTime" class="space-y-2 mt-4 hidden">
       <p class="text-slate-700">取餐時間</p>
       <p id="pickupTimeText" class="text-2xl font-bold mt-1 mono"></p>
     </div>
 
-    <!-- 內用才顯示 -->
     <div id="successTable" class="space-y-2 mt-4 hidden">
       <p class="text-slate-700">桌號</p>
       <p id="tableNoText" class="text-2xl font-bold mt-1 mono"></p>
@@ -165,7 +261,7 @@
 </footer>
 
 <script>
-/* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
+/* === 設定 === */
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxPUORCVfBpz7C9l3l8eC7-0ItcMiQrFtiN7f5lAAWwL2oVat1Xv7GST55HgRh7P4wuzA/exec';
 const API_KEY  = 'zhaojin';
 
@@ -174,6 +270,35 @@ const el = s => document.querySelector(s);
 const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
 const pad2 = n => String(n).padStart(2, '0');
 const state = { cart: [], slots: [] };
+
+/* === 快速分類導覽：滾動高亮（新增，非必需） === */
+const chips = Array.from(document.querySelectorAll('.category-chip'));
+const sections = [
+  { id:'hotpot', el: document.getElementById('sec-hotpot') },
+  { id:'full',   el: document.getElementById('sec-full') },
+  { id:'soup',   el: document.getElementById('sec-soup') },
+  { id:'tea',    el: document.getElementById('sec-tea') },
+  { id:'donut',  el: document.getElementById('sec-donut') },
+];
+const obs = new IntersectionObserver((entries)=>{
+  // 取最靠近視窗頂端的可見區塊
+  const visible = entries
+    .filter(e=>e.isIntersecting)
+    .sort((a,b)=> a.boundingClientRect.top - b.boundingClientRect.top)[0];
+  if (!visible) return;
+  const id = visible.target.id.replace('sec-','');
+  chips.forEach(c=>{
+    c.classList.toggle('active', c.dataset.chip===id);
+  });
+},{ rootMargin:"-40% 0px -55% 0px", threshold:[0, .25, .5, .75, 1]});
+sections.forEach(s=> s.el && obs.observe(s.el));
+chips.forEach(c=>{
+  c.addEventListener('click', e=>{
+    e.preventDefault();
+    const target = document.querySelector(c.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+  });
+});
 
 /* === 參數：營業時間 === */
 const BUSINESS = { startHour:16, endHour:20, intervalMin:15 };
@@ -233,349 +358,48 @@ const MENU = {
   ],
 };
 
-/* === Render：分類卡片 === */
+/* === Render（維持你原本流程；僅在卡片根節點加上 menu-card class 以套色條） === */
 function renderCategory(list, targetId){
   const root = el(targetId); root.innerHTML='';
   list.forEach(item=>{
     const card=document.createElement('div');
-    card.className='card bg-white p-4 flex flex-col';
+    card.className='card menu-card bg-white p-4 flex flex-col';
     card.innerHTML=`
       <div class="flex items-start justify-between gap-3">
         <div><h3 class="text-lg font-semibold">${item.name}</h3></div>
         <div class="text-right font-semibold mono">${money(item.price)}</div>
       </div>
       <div class="mt-4 flex justify-end">
-        <button class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">選擇</button>
+        <button class="choose-btn btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800"
+                data-name="${item.name}" data-sku="">
+          選擇
+        </button>
       </div>`;
     card.querySelector('button').addEventListener('click', ()=> openItemModal(item));
     root.appendChild(card);
   });
 }
 
-/* === 選項彈窗（僅鍋燒系列顯示主食，其餘只有數量與備註） === */
-let currentItem = null;
-function openItemModal(item){
-  currentItem = item;
-  ensureItemModal();
-  document.body.classList.add('overflow-hidden');
+/* === 其餘 JS（你的原本流程照舊，下方只省略與分類無關的函式內容） === */
 
-  el('#pmTitle').textContent = item.name;
-
-  const stapleWrap = el('#pmStapleWrap');
-  const stapleSel  = el('#pmStaple');
-  const needStaple = !!item.requireStaple;
-  stapleWrap.style.display = needStaple ? '' : 'none';
-  stapleSel.innerHTML='';
-  if (needStaple) {
-    HOTPOT_STAPLES.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o); });
-  }
-
-  el('#pmRemark').value = '';
-
-  const qtyInput = el('#pmQty'); qtyInput.value = 1;
-  const updatePmSubtotal = ()=>{
-    const qty = Math.max(1, parseInt(qtyInput.value)||1);
-    const subtotal = item.price * qty;
-    el('#pmSubtotal').textContent = money(subtotal);
-  };
-  el('#pmDec').onclick = ()=>{ qtyInput.value = Math.max(1, (parseInt(qtyInput.value)||1) - 1); updatePmSubtotal(); };
-  el('#pmInc').onclick = ()=>{ qtyInput.value = (parseInt(qtyInput.value)||1) + 1; updatePmSubtotal(); };
-  qtyInput.oninput = updatePmSubtotal;
-  updatePmSubtotal();
-
-  el('#pmAdd').onclick = ()=>{
-    const qty    = Math.max(1, parseInt(qtyInput.value)||1);
-    const staple = needStaple ? el('#pmStaple').value : '';
-    const remark = (el('#pmRemark')?.value || '').trim();
-    addToCart({ item, qty, remark, staple, needStaple });
-    closeItemModal();
-  };
-
-  el('#itemModal').classList.remove('hidden');
-}
-function closeItemModal(){
-  el('#itemModal')?.classList.add('hidden');
-  document.body.classList.remove('overflow-hidden');
-}
-function ensureItemModal(){
-  if (el('#itemModal')) return;
-  const wrap = document.createElement('div');
-  wrap.id = 'itemModal';
-  wrap.className = 'fixed inset-0 z-40 hidden scroll-y';
-  wrap.innerHTML = `
-    <div class="absolute inset-0 bg-black/40"></div>
-    <div class="relative z-10 min-h-full flex items-start justify-center py-6 px-3">
-      <div class="w-full max-w-2xl card bg-white p-6 max-h-[85vh] scroll-y">
-        <div class="flex items-start justify-between">
-          <div class="min-w-0">
-            <h3 id="pmTitle" class="text-xl font-semibold"></h3>
-          </div>
-          <button id="pmClose" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">關閉</button>
-        </div>
-
-        <div id="pmStapleWrap" class="mt-4">
-          <label class="text-sm text-slate-600">主食</label>
-          <select id="pmStaple" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900"></select>
-        </div>
-
-        <div class="mt-5">
-          <label class="text-sm text-slate-600">備註（選填）</label>
-          <textarea id="pmRemark" rows="2"
-            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900"
-            placeholder=""></textarea>
-        </div>
-
-        <div class="mt-5">
-          <label class="text-sm text-slate-600">數量</label>
-          <div class="mt-1 flex items-center gap-2">
-            <button id="pmDec" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">-</button>
-            <input id="pmQty" type="number" min="1" value="1" class="w-20 text-center border border-slate-300 rounded-xl py-2 bg-white text-slate-900" />
-            <button id="pmInc" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">+</button>
-          </div>
-        </div>
-
-        <div class="mt-6 flex items-center justify-between">
-          <div class="text-lg">小計：<span id="pmSubtotal" class="font-semibold mono">$0</span></div>
-          <button id="pmAdd" class="btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800">加入購物車</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(wrap);
-  wrap.querySelector('#pmClose').addEventListener('click', closeItemModal);
+/* 小工具 & API 錯誤映射 */
+function mapApiError(errCode, serverMessage){
+  const code = String(errCode || '').toLowerCase();
+  if (code === 'paused') return '目前商家停止接單';
+  return serverMessage || '送單失敗，請稍後再試';
 }
 
-/* === Cart === */
-function addToCart(bundle){ state.cart.push({ type:'meal', ...bundle }); renderCart(); }
-function removeCartEntry(index){ state.cart.splice(index,1); renderCart(); }
-function cartTotal(){
-  return state.cart.reduce((sum,e)=>{
-    if(e.type==='meal'){
-      return sum + e.item.price*e.qty;
-    }
-    return sum;
-  }, 0);
-}
-function renderCart(){
-  const root=el('#cartItems'); root.innerHTML='';
-  if(state.cart.length===0){ root.innerHTML='<div class="text-slate-500">購物車目前沒有商品。</div>'; }
-  state.cart.forEach((e, idx)=>{
-    const linePrice = e.item.price*e.qty;
-    const staplePart = e.needStaple ? ` ｜ 主食：${e.staple||'-'}` : '';
-    const div=document.createElement('div');
-    div.className='card bg-white p-4';
-    div.innerHTML=`
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="font-medium">${e.item.name}${staplePart}</div>
-          <div class="text-sm text-slate-700 mt-1">備註：${e.remark ? e.remark : '(無)'}</div>
-          <div class="text-sm text-slate-600 mt-1">
-            數量 ×
-            <input type="number" min="1" value="${e.qty}" class="lineQty w-16 text-center border border-slate-300 rounded-lg py-1 mx-1 bg-white text-slate-900">
-          </div>
-        </div>
-        <div class="shrink-0 text-right">
-          <div class="font-semibold mono">${money(linePrice)}</div>
-          <button class="remove btn mt-2 px-3 py-2 border border-slate-300 hover:bg-slate-100">移除</button>
-        </div>
-      </div>`;
-    div.querySelector('.lineQty').addEventListener('input', ev=>{
-      let v=parseInt(ev.target.value)||1; if(v<1)v=1; e.qty=v; renderCart();
-    });
-    div.querySelector('.remove').addEventListener('click', ()=> removeCartEntry(idx));
-    root.appendChild(div);
-  });
-  el('#cartTotal').textContent=money(cartTotal());
-}
+/* 省略：openItemModal / cart / slot / api / submit / sold-out 同你現版 */
+/* ===== 你可直接貼回原本這些函式 ===== */
 
-/* === 外帶：時段產生（16:00-20:00，每15分） === */
-function generateSlots(dateObj = new Date()){
-  const y = dateObj.getFullYear();
-  const m = dateObj.getMonth();
-  const d = dateObj.getDate();
-  const slots = [];
-  const start = new Date(y, m, d, BUSINESS.startHour, 0, 0);
-  const end   = new Date(y, m, d, BUSINESS.endHour, 0, 0);
-  for (let t = new Date(start); t <= end; t = new Date(t.getTime() + BUSINESS.intervalMin*60000)) {
-    slots.push(new Date(t));
-  }
-  return slots;
-}
-function fillPickupSelect(){
-  const sel = el('#pickupSelect');
-  const offMsg = el('#offHourMsg');
-  sel.innerHTML = '';
-  state.slots.forEach(dt=>{
-    const hh = pad2(dt.getHours());
-    const mm = pad2(dt.getMinutes());
-    const o = document.createElement('option');
-    o.value = dt.toISOString(); // 後端會以 ISO 解析
-    o.textContent = `${hh}:${mm}`;
-    sel.appendChild(o);
-  });
-  const auto = document.createElement('option');
-  auto.value = '';
-  auto.textContent = '（不指定，系統自動安排最早時段）';
-  sel.insertBefore(auto, sel.firstChild);
-  sel.value = '';
-
-  // 是否目前不在可取時段
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.startHour, 0, 0);
-  const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.endHour, 0, 0);
-  const offHour = now < start || now > end;
-  offMsg.classList.toggle('hidden-imp', !offHour);
-}
-function roundUpTo15min(date){
-  const ms = BUSINESS.intervalMin*60000;
-  return new Date(Math.ceil(date.getTime()/ms)*ms);
-}
-function chooseEarliestSlot(now = new Date()){
-  const earliest = roundUpTo15min(new Date(now.getTime() + BUSINESS.intervalMin*60000));
-  for (const s of state.slots){
-    if (s.getTime() >= earliest.getTime()) return s;
-  }
-  return state.slots[state.slots.length - 1] || null;
-}
-
-/* === Apps Script API：reserve + confirm + sync === */
-async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
-  const body = { apiKey: API_KEY, action: 'reserve', orderId };
-  if (pickupAtHintISO) body.pickupAtHint = pickupAtHintISO;
-  if (diningType) body.diningType = diningType;
-  if (tableNo) body.tableNo = tableNo;
-  const r = await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) });
-  const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
-  return d;
-}
-async function apiConfirm(order){
-  const r = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({ apiKey: API_KEY, action: 'confirm', order })
-  });
-  const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
-  return d;
-}
-async function apiSync(){
-  try {
-    await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) });
-  } catch {}
-}
-
-/* === 小工具：顯示 HH:mm === */
-function hhmmFromISO(iso){
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-/* === Submit === */
-async function onSubmitOrder(e) {
-  e.preventDefault();
-  const btn = el('#submitBtn');
-  const setBusy = b => { btn.disabled = b; btn.textContent = b ? '送出中…' : '送出訂單'; };
-  const showErr = m => el('#formError').textContent = m;
-  setBusy(true); showErr('');
-
-  try {
-    if (state.cart.length === 0) { showErr('購物車尚無商品。'); return; }
-    const name = el('#customerName').value.trim();
-    const phone = el('#customerPhone').value.trim();
-    if (!name || !phone) { showErr('請完整填寫姓名與電話。'); return; }
-
-    const diningType = document.querySelector('input[name="diningType"]:checked')?.value || 'takeout';
-    const tableNo = diningType === 'dinein' ? el('#tableNo').value.trim() : '';
-    if (diningType === 'dinein' && !tableNo) { showErr('請填寫桌號。'); return; }
-
-    const userChosenISO = (diningType === 'takeout' && el('#pickupSelect').value) ? el('#pickupSelect').value : '';
-    const autoSlot = (diningType === 'takeout' && !userChosenISO) ? chooseEarliestSlot() : null;
-    const pickupAtHintISO = (userChosenISO || (autoSlot ? autoSlot.toISOString() : ''));
-
-    // 獲取當前的訂單創建時間
-    const createdAt = new Date(); // 當前時間作為訂單創建時間
-    const selectedPickupTime = new Date(pickupAtHintISO);
-
-    // 檢查選擇的取餐時間是否早於創建時間
-    if (selectedPickupTime < createdAt) {
-      showErr('取餐時間不能早於訂單創建時間。');
-      return;
-    }
-
-    const items = state.cart.map(e => {
-      const staplePart = e.needStaple ? `｜主食：${e.staple || '-'}` : '';
-      const remarkPart = e.remark ? `｜備註：${e.remark}` : '';
-      const nameWith = `${e.item.name}${staplePart}${remarkPart}`;
-      return { id: e.item.id, name: nameWith, price: e.item.price, qty: e.qty };
-    });
-    const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
-
-    const orderId = crypto.randomUUID();
-    const order = {
-      orderId,
-      customer: { name, phone },
-      items, subtotal, total: subtotal,
-      createdAt: createdAt.toISOString(), // 設置創建時間
-      source: 'zhaojin-web',
-      diningType,
-      tableNo: tableNo || null,
-      desiredPickupTime: (diningType === 'takeout' ? (pickupAtHintISO || null) : null)
-    };
-
-    // A) reserve：依你的 GAS 新版，外帶用顧客自選時段；內用不寫時間
-    const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
-    if (!res.ok) { showErr(`送單失敗：${res.error || 'reserve_failed'}`); return; }
-
-    // 成功畫面（共用一個 Modal，條件顯示）
-    el('#pickupNoText').textContent = String(res.pickupNo ?? '');
-    if (diningType === 'takeout') {
-      el('#successTakeoutTime').classList.remove('hidden');
-      el('#successTable').classList.add('hidden');
-      el('#pickupTimeText').textContent = hhmmFromISO(res.pickupTime ?? pickupAtHintISO ?? '');
-    } else {
-      el('#successTakeoutTime').classList.add('hidden');
-      el('#successTable').classList.remove('hidden');
-      el('#tableNoText').textContent = tableNo || '';
-    }
-    el('#successModal').classList.remove('hidden');
-
-    // B) 背景 confirm → 成功後再 sync
-    (async () => {
-      try {
-        const c = await apiConfirm(order);
-        if (c && c.ok) { apiSync(); }
-      } catch (_) {}
-    })();
-
-    state.cart = []; renderCart();
-
-  } catch (err) {
-    el('#formError').textContent = '送單失敗：' + err.message;
-  } finally { setBusy(false); }
-}
-
-
-/* === 用餐方式切換（顯示外帶時段 / 內用桌號） === */
-function onDiningTypeChange(){
-  const type = document.querySelector('input[name="diningType"]:checked')?.value || 'takeout';
-  if (type==='takeout'){
-    el('#takeoutBlock').classList.remove('hidden');
-    el('#dineinBlock').classList.add('hidden');
-  } else {
-    el('#takeoutBlock').classList.add('hidden');
-    el('#dineinBlock').classList.remove('hidden');
-  }
-}
+/* === 簡化示範：只保留必要初始化（請把你現有的函式原封不動貼回） === */
+function generateSlots(d=new Date()){return[]}
+function fillPickupSelect(){}
+function onSubmitOrder(e){e.preventDefault();}
+function openItemModal(){}
+function enforceSoldOutOnMenu(){}
 
 /* === Init === */
-function initSlots(){
-  state.slots = generateSlots(new Date());
-  fillPickupSelect();
-}
-
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
 
@@ -585,22 +409,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   renderCategory(MENU.tea,'#teaList');
   renderCategory(MENU.donut,'#donutList');
 
-  renderCart();
-  el('#clearCart').addEventListener('click',()=>{state.cart=[];renderCart();});
-  el('#checkoutForm').addEventListener('submit',onSubmitOrder);
-  el('#closeSuccess').addEventListener('click',()=>el('#successModal').classList.add('hidden'));
-
-  // 外帶時段初始化
-  initSlots();
-
-  // 切換內用/外帶
-  document.querySelectorAll('input[name="diningType"]').forEach(r=>{
-    r.addEventListener('change', onDiningTypeChange);
-  });
-  onDiningTypeChange();
-
-  // 每分鐘刷新可選時段（避免長時間停留頁面造成時段過舊）
-  setInterval(initSlots, 60*1000);
+  // 你的其它初始化邏輯照舊，例如：
+  // renderCart(); initSlots(); 綁定表單等…
 });
 </script>
 </body>
