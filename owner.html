@@ -89,6 +89,11 @@
             <span id="completedCount" class="px-2 py-0.5 text-xs rounded-full bg-slate-900 text-white">0</span>
           </button>
 
+          <!-- 售完管理 -->
+          <button id="btnSoldOut" class="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 inline-flex items-center gap-2">
+            售完管理
+          </button>
+
           <label class="inline-flex items-center gap-2 text-sm text-slate-700">
             <input id="autoRefresh" type="checkbox" class="w-4 h-4" checked>
             自動每 15 秒更新
@@ -116,8 +121,40 @@
     </div>
   </div>
 
+  <!-- 售完管理抽屜 -->
+  <div id="soldoutDrawer" class="drawer-hidden fixed inset-0 z-40">
+    <div id="soldoutBackdrop" class="absolute inset-0 bg-black/30"></div>
+    <div class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl flex flex-col">
+      <div class="px-4 py-3 border-b flex items-center justify-between">
+        <div class="text-lg font-semibold">售完管理</div>
+        <button id="btnCloseSoldout" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">關閉</button>
+      </div>
+
+      <div class="p-4 border-b">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input id="soName" placeholder="名稱（可留空）" class="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2">
+          <input id="soSku" placeholder="SKU（可留空）" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2">
+          <select id="soState" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2">
+            <option value="1">設為售完</option>
+            <option value="0">恢復販售</option>
+          </select>
+          <button id="btnSoApply" class="md:col-span-1 rounded-xl border border-slate-300 px-3 py-2 hover:bg-slate-100">套用</button>
+        </div>
+        <div class="text-xs text-slate-500 mt-2">名稱或 SKU 至少填一個；若該品項不存在會自動新增一列。</div>
+      </div>
+
+      <div class="p-4 overflow-y-auto grow">
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-medium">目前菜單</div>
+          <button id="btnRefreshMenu" class="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-100 text-sm">刷新</button>
+        </div>
+        <div id="menuList" class="divide-y divide-slate-200"></div>
+      </div>
+    </div>
+  </div>
+
 <script>
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzd5wDZON1ilBfarYhd-VUWADItFMw2-hFQGnkVtTW4oOvjLcUstrKpR98DcMNVNKPJuQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzuJfISX-JGP3YiVTA1fD8H7mV4oj634GPJyEaHPGgkviFCKwMdxTLBRBLBDDnpQuQ5gQ/exec';
 const FRONTEND_PASSWORD = "zhaojin";
 const API_KEY  = 'zhaojin';
 
@@ -364,33 +401,104 @@ function renderCompletedOrders(){
   c.innerHTML = html;
 }
 
-/* 事件委派：主畫面與抽屜的完成/取消完成按鈕 */
+/* ===== 售完管理：API 與渲染 ===== */
+async function apiGetMenu(){
+  const url = `${ENDPOINT}?action=menu&_=${Date.now()}&apiKey=${API_KEY}`;
+  const r = await fetch(url);
+  const t = await r.text();
+  let d; try{ d = JSON.parse(t);}catch{ throw new Error('回應格式錯誤'); }
+  if (!d.ok) throw new Error(d.error||'menu_failed');
+  return d.items || [];
+}
+async function apiSetSoldOut({ name, sku, soldOut }){
+  const payload = { action:'set_soldout', adminKey: FRONTEND_PASSWORD, name, sku, soldOut };
+  const r = await fetch(ENDPOINT, { method:'POST', body: JSON.stringify(payload) });
+  const t = await r.text();
+  let d; try{ d = JSON.parse(t);}catch{ throw new Error('回應格式錯誤'); }
+  if(!d.ok) throw new Error(d.error||'set_soldout_failed');
+  return d;
+}
+async function renderMenuList(){
+  const box = document.getElementById('menuList');
+  box.innerHTML = '<div class="text-slate-500">讀取中…</div>';
+  try{
+    const items = await apiGetMenu();
+    if (!items.length) {
+      box.innerHTML = '<div class="text-slate-500">目前沒有菜單資料。</div>';
+      return;
+    }
+    const rows = items.map((it, i) => {
+      const chk = it.soldOut ? 'checked' : '';
+      return `
+        <div class="py-3 flex items-center gap-3">
+          <div class="w-10 text-slate-400">${i+1}</div>
+          <div class="grow min-w-0">
+            <div class="font-medium truncate">${it.name || '(未命名)'}</div>
+            <div class="text-xs text-slate-500">SKU：${it.sku || '-'}</div>
+          </div>
+          <div class="text-right">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" class="so-toggle w-5 h-5" data-name="${it.name||''}" data-sku="${it.sku||''}" ${chk}>
+              <span>${it.soldOut ? '售完' : '販售中'}</span>
+            </label>
+          </div>
+        </div>`;
+    }).join('');
+    box.innerHTML = rows;
+  }catch(err){
+    box.innerHTML = `<div class="text-rose-600">讀取失敗：${err.message}</div>`;
+  }
+}
+
+/* 事件委派：主畫面/抽屜完成切換＋售完切換 */
 function setLoading(btn, on){
   btn.setAttribute('aria-busy', on ? 'true' : 'false');
   btn.disabled = !!on;
 }
 document.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('.chkbtn');
-  if (!btn) return;
+  // 完成/取消完成
+  const doneBtn = e.target.closest('.chkbtn');
+  if (doneBtn && doneBtn.dataset.id){
+    if (doneBtn.disabled || doneBtn.getAttribute('aria-busy')==='true') return;
+    const id = doneBtn.dataset.id;
+    const next = doneBtn.dataset.next === '1'; // 目標狀態
+    setLoading(doneBtn, true);
+    try{
+      await apiSetDone(id, next);
+      // 同步 ALL
+      const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
+      if (iAll >= 0) ORDERS_ALL[iAll].done = next;
 
-  if (btn.disabled || btn.getAttribute('aria-busy')==='true') return;
-  const id = btn.dataset.id;
-  const next = btn.dataset.next === '1'; // 目標狀態（主畫面：true；抽屜：false）
-  setLoading(btn, true);
-  try{
-    await apiSetDone(id, next);
-    // 同步 ALL
-    const iAll = ORDERS_ALL.findIndex(x => String(x.id) === String(id));
-    if (iAll >= 0) ORDERS_ALL[iAll].done = next;
+      applyFilters();
+      renderCards();
+      if (isDrawerOpen()) renderCompletedOrders();
+      updateCompletedCountBadge();
+    }catch(err){
+      alert('更新失敗：' + err.message);
+    }finally{
+      setLoading(doneBtn, false);
+    }
+    return;
+  }
 
-    applyFilters();
-    renderCards();
-    if (isDrawerOpen()) renderCompletedOrders();
-    updateCompletedCountBadge();
-  }catch(err){
-    alert('更新失敗：' + err.message);
-  }finally{
-    setLoading(btn, false);
+  // 售完 toggle
+  const tgl = e.target.closest('.so-toggle');
+  if (tgl){
+    const name = tgl.dataset.name || '';
+    const sku  = tgl.dataset.sku  || '';
+    const sold = tgl.checked;
+    tgl.disabled = true;
+    try{
+      await apiSetSoldOut({ name, sku, soldOut: sold });
+      // 文字同步
+      const label = tgl.parentElement.querySelector('span');
+      if (label) label.textContent = sold ? '售完' : '販售中';
+    }catch(err){
+      alert('更新失敗：' + err.message);
+      tgl.checked = !sold; // 還原
+    }finally{
+      tgl.disabled = false;
+    }
   }
 }, { passive: true });
 
@@ -421,6 +529,13 @@ function openCompletedDrawer(){
 function closeCompletedDrawer(){
   document.getElementById('completedDrawer').classList.add('drawer-hidden');
 }
+function openSoldoutDrawer(){
+  document.getElementById('soldoutDrawer').classList.remove('drawer-hidden');
+  renderMenuList();
+}
+function closeSoldoutDrawer(){
+  document.getElementById('soldoutDrawer').classList.add('drawer-hidden');
+}
 
 /* 初始化 */
 (function init() {
@@ -438,6 +553,26 @@ function closeCompletedDrawer(){
   document.getElementById('btnShowCompleted').addEventListener('click', openCompletedDrawer);
   document.getElementById('btnCloseCompleted').addEventListener('click', closeCompletedDrawer);
   document.getElementById('completedBackdrop').addEventListener('click', closeCompletedDrawer);
+
+  // 售完管理綁定
+  document.getElementById('btnSoldOut').addEventListener('click', openSoldoutDrawer);
+  document.getElementById('btnCloseSoldout').addEventListener('click', closeSoldoutDrawer);
+  document.getElementById('soldoutBackdrop').addEventListener('click', closeSoldoutDrawer);
+  document.getElementById('btnRefreshMenu').addEventListener('click', renderMenuList);
+  document.getElementById('btnSoApply').addEventListener('click', async ()=>{
+    const name = document.getElementById('soName').value.trim();
+    const sku  = document.getElementById('soSku').value.trim();
+    const sold = document.getElementById('soState').value === '1';
+    if (!name && !sku) { alert('請至少填名稱或 SKU'); return; }
+    try{
+      await apiSetSoldOut({ name, sku, soldOut: sold });
+      await renderMenuList();
+      document.getElementById('soName').value='';
+      document.getElementById('soSku').value='';
+    }catch(err){
+      alert('更新失敗：' + err.message);
+    }
+  });
 
   loadOrders();
   startAutoRefresh();
