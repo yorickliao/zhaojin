@@ -546,35 +546,48 @@ async function isSoldOut(name){
 async function checkSoldOutByName(name){ return isSoldOut(name); }
 
 /* 把售完狀態套用到「選擇」按鈕（不改你原本事件，只是 disabled + 徽章） */
+
+
 async function enforceSoldOutOnMenu(force=false){
   try{
-    const { byName } = await fetchMenuStatus(force);
+    const { byName, bySku } = await fetchMenuStatus(force);
     document.querySelectorAll('.choose-btn').forEach(btn=>{
       const name = btn.dataset.name || '';
-      const sold = !!byName.get(name);
-      const card = btn.closest('.card');
-      const priceSlot = card?.querySelector('.item-price');
+      const sku  = btn.dataset.sku  || '';
+      const sold = sku ? !!bySku.get(sku) : !!byName.get(name);
 
-      btn.disabled = sold;
-      btn.setAttribute('aria-disabled', sold ? 'true' : 'false');
+      // 「選擇」按鈕外層，就是你 renderCategory 裡的 <div class="mt-4 flex justify-end">...</div>
+      const wrap = btn.parentElement;
+      if (!wrap) return;
 
-      // 徽章處理
-      const exist = card?.querySelector('.sold-badge');
-      if (sold){
-        if (!exist && priceSlot){
-          const badge = document.createElement('span');
-          badge.className = 'sold-badge ml-2 px-2 py-0.5 rounded-full text-xs';
+      let badge = wrap.querySelector('.sold-badge');
+
+      if (sold) {
+        // 禁用按鈕 + 視覺狀態
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled','true');
+        btn.classList.add('opacity-60','pointer-events-none');
+
+        // 若還沒有徽章，建立在「選擇」按鈕左邊
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'sold-badge mr-2 px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600';
           badge.textContent = '售完';
-          priceSlot.insertAdjacentElement('afterend', badge);
+          wrap.insertBefore(badge, btn);
         }
       } else {
-        exist?.remove();
+        // 解除禁用 + 移除徽章
+        btn.disabled = false;
+        btn.removeAttribute('aria-disabled');
+        btn.classList.remove('opacity-60','pointer-events-none');
+        if (badge) badge.remove();
       }
     });
   }catch(err){
     console.warn('套用售完狀態失敗：', err);
   }
 }
+
 
 /* === Apps Script API：reserve + confirm + sync === */
 async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
