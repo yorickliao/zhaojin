@@ -816,21 +816,27 @@ const CATEGORY_SECTIONS = [
 ];
 
 /* 幫每個分類標題加錨點（不改你原 HTML 結構） */
+/* 幫每個分類標題加錨點（符合你現在的 .cat-wrap / .cat-header 結構） */
 function ensureCategoryAnchors(){
   CATEGORY_SECTIONS.forEach(({ key, listSel })=>{
     const list = document.querySelector(listSel);
-    const h2 = list?.previousElementSibling; // 你的結構：h2 在 list 前一個
-    if (h2 && h2.tagName === 'H2') {
-      h2.id = `sec-${key}`;
-      h2.classList.add('section-anchor');
-    } else if (list) {
-      // 防呆：若抓不到 h2，就對父容器設錨點
-      const box = list.closest('.space-y-3') || list;
-      if (!box.id) box.id = `sec-${key}`;
-      box.classList.add('section-anchor');
-    }
+    if (!list) return;
+
+    // 你的結構：list 前面是 .cat-header，真正的 <h2> 在裡面
+    const headerDiv = list.previousElementSibling;
+    const h2 = headerDiv?.querySelector('h2');
+
+    // 優先把錨點放在 <h2>，沒有再退而求其次放在整個 cat-wrap 或 list 本身
+    const anchorEl =
+      h2 ||
+      list.closest('.cat-wrap') ||
+      list;
+
+    if (!anchorEl.id) anchorEl.id = `sec-${key}`;
+    anchorEl.classList.add('section-anchor');
   });
 }
+
 
 /* 計算頂端固定區塊高度（header + 分類列）作為捲動補償 */
 function getScrollOffsetPx(){
