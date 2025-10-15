@@ -175,6 +175,13 @@ const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
 const pad2 = n => String(n).padStart(2, '0');
 const state = { cart: [], slots: [] };
 
+/* 新增：API 錯誤訊息對應（paused → 目前商家停止接單） */
+function mapApiError(errCode, serverMessage){
+  const code = String(errCode || '').toLowerCase();
+  if (code === 'paused') return '目前商家停止接單';
+  return serverMessage || '送單失敗，請稍後再試';
+}
+
 /* === 參數：營業時間 === */
 const BUSINESS = { startHour:16, endHour:20, intervalMin:15 };
 
@@ -461,7 +468,7 @@ async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
   if (tableNo) body.tableNo = tableNo;
   const r = await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(body) });
   const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
+  let d; try { d = JSON.parse(t); } catch { throw new Error('送單失敗，請稍後再試'); }
   return d;
 }
 async function apiConfirm(order){
@@ -471,7 +478,7 @@ async function apiConfirm(order){
     body: JSON.stringify({ apiKey: API_KEY, action: 'confirm', order })
   });
   const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { throw new Error('bad_json:' + t.slice(0,200)); }
+  let d; try { d = JSON.parse(t); } catch { throw new Error('送單失敗，請稍後再試'); }
   return d;
 }
 async function apiSync(){
@@ -538,7 +545,7 @@ async function onSubmitOrder(e) {
     };
 
     const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
-    if (!res.ok) { showErr(`送單失敗：${res.error || 'reserve_failed'}`); return; }
+    if (!res.ok) { showErr(mapApiError(res.error, res.message)); return; }
 
     el('#pickupNoText').textContent = String(res.pickupNo ?? '');
     if (diningType === 'takeout') {
@@ -555,6 +562,7 @@ async function onSubmitOrder(e) {
     (async () => {
       try {
         const c = await apiConfirm(order);
+        // 若 confirm 也遇到 paused，不顯示錯誤給客人；你可以視需求記錄 console
         if (c && c.ok) { apiSync(); }
       } catch (_) {}
     })();
@@ -562,7 +570,7 @@ async function onSubmitOrder(e) {
     state.cart = []; renderCart();
 
   } catch (err) {
-    el('#formError').textContent = '送單失敗：' + err.message;
+    el('#formError').textContent = '送單失敗：' + (err?.message || '請稍後再試');
   } finally { setBusy(false); }
 }
 
