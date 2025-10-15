@@ -95,9 +95,10 @@
       <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
               data-cat="soup"   style="color:#242d47">喝湯</button>
       <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="tea"    style="color:#c9141a">喝茶</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
               data-cat="donut"  style="color:#242d47">呷甜</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="tea"    style="color:#c9141a">喝茶</button>
+      
     </div>
   </div>
 </nav>
@@ -133,6 +134,15 @@
       <div id="soupList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
+    <!-- 呷甜（類別 A 色） -->
+    <div class="cat-wrap cat-a">
+      <div class="cat-header">
+        <span class="cat-swatch"></span>
+        <h2 class="text-lg font-semibold">呷甜（甜甜圈）</h2>
+      </div>
+      <div id="donutList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+
     <!-- 喝茶（類別 B 色） -->
     <div class="cat-wrap cat-b">
       <div class="cat-header">
@@ -142,14 +152,7 @@
       <div id="teaList" class="grid grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- 呷甜（類別 A 色） -->
-    <div class="cat-wrap cat-a">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold">呷甜（甜甜圈）</h2>
-      </div>
-      <div id="donutList" class="grid grid-cols-2 gap-4"></div>
-    </div>
+    
   </section>
 
   <aside id="cart"
@@ -776,8 +779,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   renderCategory(MENU.hotpot,'#hotpotList');
   renderCategory(MENU.full,'#fullList');
   renderCategory(MENU.soup,'#soupList');
-  renderCategory(MENU.tea,'#teaList');
   renderCategory(MENU.donut,'#donutList');
+  renderCategory(MENU.tea,'#teaList');
+  
 
   // 初始套用一次售完狀態，之後每 30 秒刷新一次
   (async ()=>{ await enforceSoldOutOnMenu(true); setInterval(()=> enforceSoldOutOnMenu(false), SOLDOUT_TTL_MS); })();
@@ -811,8 +815,9 @@ const CATEGORY_SECTIONS = [
   { key:'hotpot', label:'鍋燒系列', listSel:'#hotpotList', color:'#242d47' },
   { key:'full',   label:'呷飽飽系列', listSel:'#fullList', color:'#c9141a' },
   { key:'soup',   label:'喝湯',       listSel:'#soupList',  color:'#242d47' },
-  { key:'tea',    label:'喝茶',       listSel:'#teaList',   color:'#c9141a' },
   { key:'donut',  label:'呷甜',       listSel:'#donutList', color:'#242d47' },
+  { key:'tea',    label:'喝茶',       listSel:'#teaList',   color:'#c9141a' },
+  
 ];
 
 /* 幫每個分類標題加錨點（不改你原 HTML 結構） */
