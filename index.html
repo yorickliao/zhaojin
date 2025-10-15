@@ -50,19 +50,20 @@
     /* 成功視窗卡片 */
     #successModal .card{box-shadow:0 16px 40px rgba(15,23,42,.2)}
 
-    /* 分類錨點：讓捲動後剛好露出在固定導覽下方 */
-    .section-anchor{ scroll-margin-top: 110px; } /* 視你的 header 高度微調 */
+    /* 分類錨點區塊：讓捲動後卡在固定導覽下方剛好顯示 */
+    .section-anchor{ scroll-margin-top: 120px; } /* 視實際 header/分類列高度可微調 */
     
-    /* 隱藏水平卷軸外觀（仍可左右滑） */
+    /* 隱藏水平卷軸（仍可左右滑） */
     .no-scrollbar::-webkit-scrollbar{ display:none; }
     .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
     
-    /* 分類按鈕的選中狀態 */
+    /* 分類按鈕選中狀態 */
     .catbtn.is-active{
-      background:#0f172a; /* slate-900 */
-      color:#fff;
+      background:#0f172a;     /* slate-900 */
+      color:#fff !important;  /* 被選中時反白 */
       border-color:#0f172a;
     }
+
 
   </style>
 </head>
@@ -87,19 +88,20 @@
      class="sticky top-[64px] z-20 bg-white/90 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-2">
     <div class="flex gap-2 overflow-x-auto no-scrollbar">
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 shrink-0"
-              data-cat="hotpot">鍋燒系列</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 shrink-0"
-              data-cat="full">呷飽飽系列</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 shrink-0"
-              data-cat="soup">喝湯</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 shrink-0"
-              data-cat="tea">喝茶</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 shrink-0"
-              data-cat="donut">呷甜</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="hotpot" style="color:#242d47">鍋燒系列</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="full"   style="color:#c9141a">呷飽飽系列</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="soup"   style="color:#242d47">喝湯</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="tea"    style="color:#c9141a">喝茶</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
+              data-cat="donut"  style="color:#242d47">呷甜</button>
     </div>
   </div>
 </nav>
+
 
 
 <main class="mx-auto container-slim px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -780,6 +782,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 初始套用一次售完狀態，之後每 30 秒刷新一次
   (async ()=>{ await enforceSoldOutOnMenu(true); setInterval(()=> enforceSoldOutOnMenu(false), SOLDOUT_TTL_MS); })();
 
+  ensureCategoryAnchors();
+  paintCategoryButtons();
+  bindCategoryClicks();
+  observeActiveCategory();
+
   renderCart();
   el('#clearCart').addEventListener('click',()=>{state.cart=[];renderCart();});
   el('#checkoutForm').addEventListener('submit',onSubmitOrder);
@@ -799,62 +806,86 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 
-/* ===== 分類快速選擇：平滑捲動 + 自動高亮 ===== */
-
-/* 你原本的區塊結構是：
-   <div class="space-y-3">
-     <h2>分類名稱</h2>
-     <div id="hotpotList"></div>
-   </div>
-   我們動態幫每個分類的 h2 加上一個錨點 id（sec-xxx），不需要改 HTML。 */
+/* ===== 分類快速選擇：錨點、捲動、著色、選中狀態 ===== */
 const CATEGORY_SECTIONS = [
-  { key:'hotpot', label:'鍋燒系列', listSel:'#hotpotList' },
-  { key:'full',   label:'呷飽飽系列', listSel:'#fullList' },
-  { key:'soup',   label:'喝湯',       listSel:'#soupList' },
-  { key:'tea',    label:'喝茶',       listSel:'#teaList' },
-  { key:'donut',  label:'呷甜',       listSel:'#donutList' },
+  { key:'hotpot', label:'鍋燒系列', listSel:'#hotpotList', color:'#242d47' },
+  { key:'full',   label:'呷飽飽系列', listSel:'#fullList', color:'#c9141a' },
+  { key:'soup',   label:'喝湯',       listSel:'#soupList',  color:'#242d47' },
+  { key:'tea',    label:'喝茶',       listSel:'#teaList',   color:'#c9141a' },
+  { key:'donut',  label:'呷甜',       listSel:'#donutList', color:'#242d47' },
 ];
 
+/* 幫每個分類標題加錨點（不改你原 HTML 結構） */
 function ensureCategoryAnchors(){
   CATEGORY_SECTIONS.forEach(({ key, listSel })=>{
     const list = document.querySelector(listSel);
-    const h2 = list?.previousElementSibling;    // 你的結構裡，h2 在清單前
+    const h2 = list?.previousElementSibling; // 你的結構：h2 在 list 前一個
     if (h2 && h2.tagName === 'H2') {
       h2.id = `sec-${key}`;
       h2.classList.add('section-anchor');
+    } else if (list) {
+      // 防呆：若抓不到 h2，就對父容器設錨點
+      const box = list.closest('.space-y-3') || list;
+      if (!box.id) box.id = `sec-${key}`;
+      box.classList.add('section-anchor');
     }
   });
 }
 
-/* 點擊分類 → 平滑捲動到對應錨點 */
+/* 計算頂端固定區塊高度（header + 分類列）作為捲動補償 */
+function getScrollOffsetPx(){
+  const header = document.querySelector('header');
+  const bar    = document.querySelector('#categoryBar');
+  return (header?.offsetHeight || 0) + (bar?.offsetHeight || 0) + 8;
+}
+
+/* 平滑捲動到指定分類（用絕對座標，避免部分瀏覽器對 scrollIntoView 的 sticky 偏移問題） */
+function scrollToCategory(key){
+  const sec = document.getElementById(`sec-${key}`);
+  if (!sec) return;
+  const top = sec.getBoundingClientRect().top + window.pageYOffset - getScrollOffsetPx();
+  window.scrollTo({ top, behavior:'smooth' });
+}
+
+/* 設定分類按鈕著色（字色依類別；選中時反白） */
+function paintCategoryButtons(){
+  const btns = document.querySelectorAll('#categoryBar .catbtn');
+  btns.forEach(btn=>{
+    const conf = CATEGORY_SECTIONS.find(x=>x.key === btn.dataset.cat);
+    if (conf) btn.style.color = conf.color;
+  });
+}
+
+/* 點擊綁定 */
 function bindCategoryClicks(){
   document.querySelectorAll('#categoryBar .catbtn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.dataset.cat;
-      const target = document.getElementById(`sec-${key}`);
-      if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+      scrollToCategory(key);
+      // 立即高亮（之後還會被觀察者覆蓋成正確狀態）
+      document.querySelectorAll('#categoryBar .catbtn').forEach(b=>b.classList.remove('is-active'));
+      btn.classList.add('is-active');
     });
   });
 }
 
-/* 監看捲動位置，自動高亮所在分類 */
+/* 監看捲動，自動高亮當前分類 */
 function observeActiveCategory(){
   const buttons = Array.from(document.querySelectorAll('#categoryBar .catbtn'));
-  const mapBtn = Object.fromEntries(buttons.map(b=>[b.dataset.cat, b]));
-  const options = { root:null, rootMargin:'-40% 0px -55% 0px', threshold:0 };
+  const mapBtn  = Object.fromEntries(buttons.map(b => [b.dataset.cat, b]));
 
   const io = new IntersectionObserver(entries=>{
-    entries.forEach(entry=>{
-      const id = entry.target.id || '';
-      const key = id.replace(/^sec-/, '');
-      if (mapBtn[key]) {
-        if (entry.isIntersecting) {
-          buttons.forEach(b=>b.classList.remove('is-active'));
-          mapBtn[key].classList.add('is-active');
-        }
-      }
-    });
-  }, options);
+    // 找到目前「最靠近頂部」且可見的錨點
+    const visible = entries
+      .filter(e => e.isIntersecting)
+      .sort((a,b)=> a.boundingClientRect.top - b.boundingClientRect.top);
+    if (!visible.length) return;
+    const key = (visible[0].target.id || '').replace(/^sec-/,'');
+    if (mapBtn[key]) {
+      buttons.forEach(b=>b.classList.remove('is-active'));
+      mapBtn[key].classList.add('is-active');
+    }
+  }, { root:null, rootMargin:`-${getScrollOffsetPx()+10}px 0px -60% 0px`, threshold:0 });
 
   CATEGORY_SECTIONS.forEach(({ key })=>{
     const anchor = document.getElementById(`sec-${key}`);
@@ -862,13 +893,6 @@ function observeActiveCategory(){
   });
 }
 
-/* 在你的 DOMContentLoaded 裡面「渲染完各分類清單之後」呼叫這三個 */
-document.addEventListener('DOMContentLoaded', ()=>{
-  // 你的 renderCategory(...) 都跑完後：
-  ensureCategoryAnchors();
-  bindCategoryClicks();
-  observeActiveCategory();
-});
 
 </script>
 </body>
