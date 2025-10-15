@@ -222,6 +222,30 @@ function updatePauseUI(){
   }
 }
 
+function setPauseBtnBusy(on){
+  const btn = document.getElementById('btnTogglePause');
+  if (!btn) return;
+  if (on){
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    // 顯示轉圈 + 處理中文字樣
+    btn.innerHTML = `
+      <span class="inline-flex items-center gap-2">
+        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity=".25"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10" fill="currentColor"></path>
+        </svg>
+        <span>處理中…</span>
+      </span>`;
+  }else{
+    btn.removeAttribute('aria-busy');
+    btn.disabled = false;
+    // 還原按鈕文字（依目前狀態由 updatePauseUI 控制）
+    updatePauseUI();
+  }
+}
+
+
 async function detectPausedStatus(){
   const date = document.querySelector('#datePicker')?.value || todayLocal();
   const url  = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
@@ -607,18 +631,19 @@ function closeSoldoutDrawer(){
   document.getElementById('btnRefreshMenu').addEventListener('click', renderMenuList);
 
   // 停止/恢復接單按鈕
+
   document.getElementById('btnTogglePause').addEventListener('click', async ()=>{
-    const btn = document.getElementById('btnTogglePause');
-    btn.disabled = true;
     try{
+      setPauseBtnBusy(true);
       await apiSetPause(!IS_PAUSED);
       if (!IS_PAUSED) await loadOrders(); // 從暫停恢復時刷新一次
     }catch(err){
       alert('操作失敗：' + err.message);
     }finally{
-      btn.disabled = false;
+      setPauseBtnBusy(false);
     }
   });
+
 
   // 啟動時偵測一次狀態
   detectPausedStatus();
