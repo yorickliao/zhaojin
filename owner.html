@@ -45,7 +45,9 @@
     @keyframes shimmer { 0%{background-position: 100% 0} 100%{background-position: -100% 0} }
 
     /* 軟刷新：保持既有內容，只加淡淡的更新感 */
-    #ordersContainer.updating { opacity: .6; pointer-events: none; }
+    #ordersContainer.updating { opacity: .94; }
+    .new-order { outline: 3px solid #f59e0b; outline-offset: 1px; }
+    .new-tag { display: inline-block; padding:.15rem .5rem; background:#fef3c7; color:#92400e; border-radius:999px; font-size:.8rem; font-weight:700; margin-left:.5rem; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -57,11 +59,12 @@
         <div class="w-10 h-10 bg-slate-900 text-white rounded-xl grid place-items-center text-lg font-bold select-none">管</div>
         <div class="min-w-0">
           <div class="text-xl font-semibold truncate">招金 訂單管理</div>
-          <div class="text-xs text-slate-500">營業 16:00 - 20:00 ・ 自動每 15 秒更新</div>
+          <div class="text-xs text-slate-500">週二至週五 16:00–19:30 ・ 自動每 15 秒更新</div>
         </div>
       </div>
       <!-- 右上角：接單狀態 + 停止/恢復 + 轉圈提示 -->
       <div class="flex items-center gap-2">
+        <button id="btnSound" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-sm" type="button">開啟新單音效</button>
         <span id="pauseBadge" class="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">接單中</span>
         <button id="btnTogglePause" class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100">停止接單</button>
 
@@ -108,6 +111,7 @@
         </div>
       </div>
       <div class="text-sm text-slate-500 mt-3" id="meta"></div>
+      <div id="newOrderAlert" role="status" class="hidden mt-3 px-4 py-3 rounded-xl bg-amber-100 text-amber-900 font-semibold"></div>
     </div>
 
     <div id="listCard" class="card bg-white p-6 hidden">
@@ -147,7 +151,7 @@
   </div>
 
 <script>
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxTtrXkCFN2jQjCTVOW1AfxUEKC2CbhN8Kg098Clj29S0TVfL0dpzdDH1RV4BS3xm4WLQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzlzbW2J89EEKJ7ZYwaeyaZSJnjwd6YVxFnZ2qPQnQHt3WHmptavYdgbU1yPECxdI8YkQ/exec';
 const FRONTEND_PASSWORD = "zhaojin";
 const API_KEY  = 'zhaojin';
 
@@ -157,6 +161,13 @@ let isLoading = false;
 let refreshTimer = null;
 let autoRefresh = true;
 let lastSync = '--';
+let soundEnabled = false;
+let audioContext = null;
+let seenOrderIds = new Set();
+let seenReady = false;
+let freshOrderIds = new Set();
+let activeDate = '';
+let newAlertTimer = null;
 
 // 簡易快取簽名，避免資料未變時重繪
 const CACHE = { listKey: '', lastSig: '' };
@@ -167,20 +178,61 @@ let IS_PAUSED = false;
 function fmtMoney(n){ return '$' + Number(n||0).toLocaleString('zh-Hant'); }
 function nowTime(){ const d = new Date(); return d.toLocaleString('zh-TW',{hour12:false}); }
 function todayLocal(){
-  const d = new Date(); const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone:'Asia/Taipei', year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date());
+  const get = type => parts.find(p=>p.type===type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+function escapeHtml(v){
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function pickupHHMM(v){
+  if (v == null || v === '') return '';
+  const s=String(v);
+  const plain=s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (plain && !/[TZ]/.test(s)) return `${plain[1].padStart(2,'0')}:${plain[2]}`;
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime())) return s;
+  return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
+}
+function sortOrders(rows){
+  return [...rows].sort((a,b)=>{
+    const ta=a.diningType==='dinein'?'99:99':pickupHHMM(a.pickupTime);
+    const tb=b.diningType==='dinein'?'99:99':pickupHHMM(b.pickupTime);
+    return ta.localeCompare(tb) || Number(a.pickupNo||0)-Number(b.pickupNo||0);
+  });
+}
+function playNewOrderSound(){
+  if(!soundEnabled) return;
+  try {
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx) return;
+    audioContext ||= new Ctx();
+    if(audioContext.state==='suspended') audioContext.resume();
+    const t=audioContext.currentTime;
+    [0,.19].forEach((offset,i)=>{
+      const osc=audioContext.createOscillator(), gain=audioContext.createGain();
+      osc.type='sine'; osc.frequency.value=i?880:660;
+      gain.gain.setValueAtTime(0.0001,t+offset);
+      gain.gain.exponentialRampToValueAtTime(0.13,t+offset+.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,t+offset+.15);
+      osc.connect(gain);gain.connect(audioContext.destination);
+      osc.start(t+offset);osc.stop(t+offset+.16);
+    });
+  }catch(e){console.warn('提示音無法播放',e);}
+}
+function announceNewOrders(count){
+  const el=document.getElementById('newOrderAlert');
+  el.textContent=`收到 ${count} 筆新訂單，請確認餐點與取餐時間。`;
+  el.classList.remove('hidden');
+  clearTimeout(newAlertTimer);
+  newAlertTimer=setTimeout(()=>el.classList.add('hidden'),12000);
+  playNewOrderSound();
 }
 function isDrawerOpen(){ return !document.getElementById('completedDrawer').classList.contains('drawer-hidden'); }
 
-function formatPickupTimeToTaipei(pickupTime) {
-  const localDate = new Date(pickupTime);
-  const formattedTime = new Intl.DateTimeFormat('zh-TW', {
-    timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).format(localDate);
-  const m = formattedTime.match(/(\d{2}):(\d{2})/);
-  return m ? `${m[1]}:${m[2]}` : '';
-}
+function formatPickupTimeToTaipei(pickupTime){ return pickupHHMM(pickupTime); }
 
 function setLastSync(){
   lastSync = nowTime();
@@ -247,17 +299,17 @@ function setPauseBtnBusy(on){
 
 
 async function detectPausedStatus(){
-  const date = document.querySelector('#datePicker')?.value || todayLocal();
-  const url  = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
   try{
-    const r = await fetch(url);
-    const d = await r.json();
-    if (d && d.error === 'paused') IS_PAUSED = true;
-    else if (d && d.ok === true) IS_PAUSED = false;
-  }catch{
-    // 忽略偵測錯誤
+    const url=`${ENDPOINT}?action=admin_state&adminKey=${encodeURIComponent(FRONTEND_PASSWORD)}&_=${Date.now()}`;
+    const r=await fetch(url);
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'status_failed');
+    IS_PAUSED=!!d.paused;
+    updatePauseUI();
+  }catch(err){
+    document.getElementById('pauseBadge').textContent='狀態未知';
+    console.warn('接單狀態讀取失敗:',err);
   }
-  updatePauseUI();
 }
 
 /* Skeleton: 顯示 n 張骨架卡 */
@@ -270,8 +322,9 @@ function showSkeleton(n=6){
 
 /* 產生簽名：日期 + 筆數 + 每筆 id/done 組合，足以判斷是否需要重繪 */
 function signatureFor(date, arr){
-  const base = arr.map(o => `${o.id}:${isDoneVal(o.done)?1:0}`).join('|');
-  return `${date}#${arr.length}#${base}`;
+  return date+'#'+JSON.stringify(arr.map(o=>[
+    o.id,o.done,o.pickupNo,o.diningType,o.pickupTime,o.name,o.phone,o.items,o.total
+  ]));
 }
 
 async function loadOrders(){
@@ -293,27 +346,32 @@ async function loadOrders(){
   }
 
   const date = document.querySelector('#datePicker').value || '';
-  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${API_KEY}&date=${date}`;
+  const url = `${ENDPOINT}?action=list&_=${Date.now()}&apiKey=${encodeURIComponent(API_KEY)}&adminKey=${encodeURIComponent(FRONTEND_PASSWORD)}&date=${encodeURIComponent(date)}`;
 
   try {
     const r = await fetch(url);
     const t = await r.text();
     let d; try{ d = JSON.parse(t);}catch{ throw new Error('回應格式錯誤'); }
 
-    // 新增：同步接單狀態與暫停處理
-    if (d && d.error === 'paused'){
-      IS_PAUSED = true;
-      updatePauseUI();
-      metaEl.textContent = '目前已停止接單';
-      return; // 暫停時不更新清單
-    } else {
-      IS_PAUSED = false;
-      updatePauseUI();
-    }
-
     if (!d.ok) throw new Error(d.error || 'unknown');
 
     ORDERS_ALL = d.orders || [];
+    const ids=new Set(ORDERS_ALL.map(o=>String(o.id)));
+    if(activeDate !== date) {
+      activeDate=date;
+      seenReady=false;
+      seenOrderIds=new Set();
+      freshOrderIds=new Set();
+    }
+    if(seenReady && date===todayLocal()) {
+      const incoming=ORDERS_ALL.filter(o=>!seenOrderIds.has(String(o.id)) && !isDoneVal(o.done));
+      if(incoming.length){
+        incoming.forEach(o=>freshOrderIds.add(String(o.id)));
+        announceNewOrders(incoming.length);
+      }
+    }
+    seenOrderIds=ids;
+    seenReady=true;
 
     // 快取簽名：資料沒變就不重繪（但仍更新 meta 時間）
     const sig = signatureFor(date, ORDERS_ALL);
@@ -342,24 +400,13 @@ async function loadOrders(){
 
 function applyFilters(){
   const chosenDate = document.querySelector('#datePicker').value || '';
-  // 當日
-  let rowsToday = ORDERS_ALL.filter(o => {
-    const createdAt = new Date(o.createdAt);
-    const norm = createdAt.toISOString().split('T')[0];
-    return norm === chosenDate;
-  });
-  // 主畫面只顯示未完成
-  ORDERS = rowsToday.filter(o => !isDoneVal(o.done));
+  // 日期已經由 GAS 依台北時間過濾，前端不可再用 UTC 重新過濾。
+  ORDERS = sortOrders(ORDERS_ALL.filter(o => !isDoneVal(o.done)));
 }
 
 /* 當日完成清單與數量 */
 function getCompletedToday(){
-  const chosenDate = document.querySelector('#datePicker').value || '';
-  return ORDERS_ALL.filter(o => {
-    const createdAt = new Date(o.createdAt);
-    const norm = createdAt.toISOString().split('T')[0];
-    return norm === chosenDate && isDoneVal(o.done);
-  });
+  return sortOrders(ORDERS_ALL.filter(o=>isDoneVal(o.done)));
 }
 
 function updateCompletedCountBadge(){
@@ -376,30 +423,30 @@ function renderCards(){
   let html = '';
   for (const o of ORDERS){
     const pickupInfo = o.diningType === 'dinein'
-      ? `桌號: ${o.pickupTime}`
-      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+      ? `桌號: ${escapeHtml(o.pickupTime)}`
+      : `取餐時間: ${escapeHtml(formatPickupTimeToTaipei(o.pickupTime))}`;
 
     const itemsList = String(o.items || '')
       .split(/\r?\n/).map(it=>{
         const [name, quantity] = it.trim().split('x').map(s=>s.trim());
         if (!name) return '';
-        return `${name} x${quantity||1}`;
+        return `${escapeHtml(name)} x${escapeHtml(quantity||1)}`;
       }).filter(Boolean).join('<br>');
 
     html += `
-    <div class="card ${o.diningType==='dinein'?'dinein':'takeout'}">
-      <h3 class="text-3xl font-semibold">訂單編號: #${o.pickupNo}</h3>
+    <div class="card ${o.diningType==='dinein'?'dinein':'takeout'} ${freshOrderIds.has(String(o.id))?'new-order':''}">
+      <h3 class="text-3xl font-semibold">訂單編號: #${escapeHtml(o.pickupNo)}${freshOrderIds.has(String(o.id))?'<span class="new-tag">新訂單</span>':''}</h3>
       <div class="border-t border-b my-2 py-2">
         <p class="text-2xl">${o.diningType==='dinein'?'內用':'外帶'}</p>
         <p class="text-xl">${pickupInfo}</p>
-        <p class="text-xl">姓名: ${o.name} | 電話: ${o.phone}</p>
+        <p class="text-xl">姓名: ${escapeHtml(o.name)} | 電話: ${escapeHtml(o.phone)}</p>
       </div>
       <div class="border-t border-b my-2 py-2">
         <p class="text-xl">餐點: <br> ${itemsList}</p>
       </div>
       <div class="text-right flex items-center justify-end gap-4">
-        <span class="text-xl font-semibold">總計: $${o.total}</span>
-        <button class="chkbtn" data-id="${o.id}" data-next="1" aria-pressed="false" aria-busy="false">
+        <span class="text-xl font-semibold">總計: ${fmtMoney(o.total)}</span>
+        <button class="chkbtn" data-id="${escapeHtml(o.id)}" data-next="1" aria-pressed="false" aria-busy="false">
           <span class="state-default inline-flex items-center gap-2">
             <span class="box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -414,7 +461,7 @@ function renderCards(){
       </div>
     </div>`;
   }
-  c.innerHTML = html;
+  c.innerHTML = html || '<div class="text-slate-500 p-5">目前沒有待處理訂單。</div>';
 }
 
 /* 批次渲染抽屜（已完成） */
@@ -428,26 +475,26 @@ function renderCompletedOrders(){
   let html = '';
   for (const o of list){
     const pickupInfo = o.diningType === 'dinein'
-      ? `桌號: ${o.pickupTime}`
-      : `取餐時間: ${formatPickupTimeToTaipei(o.pickupTime)}`;
+      ? `桌號: ${escapeHtml(o.pickupTime)}`
+      : `取餐時間: ${escapeHtml(formatPickupTimeToTaipei(o.pickupTime))}`;
 
     const itemsList = String(o.items || '')
       .split(/\r?\n/).map(it=>{
         const [name, quantity] = it.trim().split('x').map(s=>s.trim());
         if (!name) return '';
-        return `${name} x${quantity||1}`;
+        return `${escapeHtml(name)} x${escapeHtml(quantity||1)}`;
       }).filter(Boolean).join('<br>');
 
     // 抽屜內按鈕是「已完成」外觀，點擊會取消完成
     html += `
     <div class="card bg-white">
       <div class="flex items-center justify-between">
-        <div class="text-lg font-semibold">#${o.pickupNo}</div>
+        <div class="text-lg font-semibold">#${escapeHtml(o.pickupNo)}</div>
         <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">已完成</span>
       </div>
       <div class="mt-2 text-sm text-slate-700">
         <div>${o.diningType==='dinein'?'內用':'外帶'}・${pickupInfo}</div>
-        <div>姓名：${o.name} ・ 電話：${o.phone}</div>
+        <div>姓名：${escapeHtml(o.name)} ・ 電話：${escapeHtml(o.phone)}</div>
       </div>
       <div class="mt-3 text-sm">
         <div class="font-medium mb-1">餐點</div>
@@ -455,7 +502,7 @@ function renderCompletedOrders(){
       </div>
       <div class="mt-3 flex items-center justify-between">
         <div class="font-semibold">${fmtMoney(o.total)}</div>
-        <button class="chkbtn is-checked" data-id="${o.id}" data-next="0" aria-pressed="true" aria-busy="false">
+        <button class="chkbtn is-checked" data-id="${escapeHtml(o.id)}" data-next="0" aria-pressed="true" aria-busy="false">
           <span class="state-default inline-flex items-center gap-2">
             <span class="box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -499,17 +546,17 @@ async function renderMenuList(){
       box.innerHTML = '<div class="text-slate-500">目前沒有菜單資料。</div>';
       return;
     }
-    const rows = items.map((it, i) => {
+    const rows = items.filter(it=>it.available !== false).map((it, i) => {
       const chk = it.soldOut ? 'checked' : '';
       return `
         <div class="py-3 flex items-center gap-3">
           <div class="w-10 text-slate-400">${i+1}</div>
           <div class="grow min-w-0">
-            <div class="font-medium truncate">${it.name || '(未命名)'}</div>
+            <div class="font-medium truncate">${escapeHtml(it.name || '(未命名)')}</div>
           </div>
           <div class="text-right">
             <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" class="so-toggle w-5 h-5" data-name="${it.name||''}" ${chk}>
+              <input type="checkbox" class="so-toggle w-5 h-5" data-name="${escapeHtml(it.name||'')}" ${chk}>
               <span>${it.soldOut ? '售完' : '販售中'}</span>
             </label>
           </div>
@@ -545,6 +592,8 @@ document.addEventListener('click', async (e)=>{
       renderCards();
       if (isDrawerOpen()) renderCompletedOrders();
       updateCompletedCountBadge();
+      CACHE.lastSig = signatureFor(document.querySelector('#datePicker').value, ORDERS_ALL);
+      freshOrderIds.delete(String(id));
     }catch(err){
       alert('更新失敗：' + err.message);
     }finally{
@@ -570,7 +619,7 @@ document.addEventListener('click', async (e)=>{
       tgl.disabled = false;
     }
   }
-}, { passive: true });
+});
 
 async function apiSetDone(id, next){
   const payload = { action: 'set_done', adminKey: FRONTEND_PASSWORD, id, value: next };
@@ -584,7 +633,7 @@ async function apiSetDone(id, next){
 function startAutoRefresh() {
   stopAutoRefresh();
   refreshTimer = setInterval(async () => {
-    if (!document.hidden && autoRefresh) await loadOrders();
+    if (!document.hidden && autoRefresh) { await loadOrders(); await detectPausedStatus(); }
   }, 15000);
 }
 function stopAutoRefresh() {
@@ -618,6 +667,16 @@ function closeSoldoutDrawer(){
     loadOrders();
   });
   document.getElementById('btnReload').addEventListener('click', loadOrders);
+  document.getElementById('autoRefresh').addEventListener('change',e=>{autoRefresh=e.target.checked; if(autoRefresh) loadOrders();});
+  document.getElementById('btnSound').addEventListener('click',async()=>{
+    soundEnabled=!soundEnabled;
+    const btn=document.getElementById('btnSound');
+    btn.textContent=soundEnabled?'音效已開啟':'開啟新單音效';
+    if(soundEnabled){
+      try{const Ctx=window.AudioContext||window.webkitAudioContext;if(Ctx){audioContext ||= new Ctx();await audioContext.resume();playNewOrderSound();}}catch(e){console.warn(e);}
+    }
+  });
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden && autoRefresh){loadOrders();detectPausedStatus();}});
   document.getElementById('datePicker').addEventListener('change', loadOrders);
 
   document.getElementById('btnShowCompleted').addEventListener('click', openCompletedDrawer);
