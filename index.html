@@ -30,6 +30,10 @@
     select option{background:#fff;color:#0f172a}
     .scroll-y{overflow-y:auto;-webkit-overflow-scrolling:touch}
     .hidden-imp{display:none!important}
+    .loading-wheel {width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#0f172a;border-radius:50%;animation:spin-loading .85s linear infinite}
+    .button-wheel {display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin-loading .75s linear infinite;vertical-align:-2px;margin-right:7px}
+    @keyframes spin-loading {to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce) {.loading-wheel,.button-wheel {animation-duration:2.5s}}
 
     /* 類別區塊標題：左側色條 + 圖示 + 標題 */
     .cat-header{display:flex;align-items:center;gap:.75rem}
@@ -69,6 +73,17 @@
 </head>
 
 <body class="bg-slate-50 text-slate-900 selection:bg-slate-200 selection:text-slate-900">
+<!-- 初次讀取／送單期間防止重複操作 -->
+<div id="loadingOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-white/95 backdrop-blur-sm" role="status" aria-live="polite" aria-busy="true">
+  <div class="flex flex-col items-center gap-4 text-center px-6 max-w-md">
+    <div id="loadingSpinner" class="loading-wheel" aria-hidden="true"></div>
+    <h2 id="loadingTitle" class="text-xl font-semibold text-slate-900">正在載入菜單...</h2>
+    <p id="loadingDescription" class="text-sm text-slate-500">正在取得最新商品與售完資訊，請稍候</p>
+    <button id="retryMenuBtn" type="button" class="hidden btn px-5 py-2.5 bg-slate-900 text-white">重新讀取菜單</button>
+    <button id="dismissOrderLoadingBtn" type="button" class="hidden btn px-4 py-2 border border-slate-300">隱藏提示（訂單仍在處理）</button>
+  </div>
+</div>
+<div id="menuSyncIndicator" class="fixed bottom-4 right-4 z-20 hidden rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-lg" role="status" aria-live="polite"></div>
 <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
@@ -238,6 +253,41 @@ const el = s => document.querySelector(s);
 const money = n => '$' + Number(n||0).toLocaleString('zh-Hant');
 const pad2 = n => String(n).padStart(2, '0');
 const state = { cart: [], slots: [] };
+const MENU_STORAGE_KEY = 'zhaojin_menu_cache_v1';
+const MENU_STORAGE_MAX_AGE = 5 * 60 * 1000;
+let menuReady = false;
+let menuFetchInFlight = null;
+let menuRefreshInFlight = null;
+let syncHintTimer = null;
+
+function showLoading(title, description, {retry=false, cancel=false} = {}) {
+  el('#loadingTitle').textContent = title;
+  el('#loadingDescription').textContent = description;
+  el('#loadingSpinner').classList.toggle('hidden', retry);
+  el('#retryMenuBtn').classList.toggle('hidden', !retry);
+  el('#dismissOrderLoadingBtn').classList.toggle('hidden', !cancel);
+  el('#loadingOverlay').classList.remove('hidden');
+  el('#loadingOverlay').setAttribute('aria-busy', retry ? 'false' : 'true');
+}
+function hideLoading(){ el('#loadingOverlay').classList.add('hidden'); }
+function showMenuSync(text, type='info') {
+  const box = el('#menuSyncIndicator');
+  box.textContent = text;
+  box.classList.remove('hidden');
+  box.style.borderColor = type === 'error' ? '#fca5a5' : '#e2e8f0';
+  if (syncHintTimer) clearTimeout(syncHintTimer);
+  syncHintTimer = setTimeout(()=>box.classList.add('hidden'), type === 'error' ? 6500 : 1800);
+}
+function readMenuCache(){
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(MENU_STORAGE_KEY) || 'null');
+    return saved && Array.isArray(saved.items) && Date.now()-saved.ts < MENU_STORAGE_MAX_AGE ? saved : null;
+  } catch { return null; }
+}
+function writeMenuCache(items){
+  try { sessionStorage.setItem(MENU_STORAGE_KEY, JSON.stringify({ts:Date.now(), items})); }catch{}
+}
+
 
 /* 新增：API 錯誤訊息對應（paused → 目前商家停止接單） */
 function mapApiError(errCode, serverMessage){
@@ -298,6 +348,10 @@ function renderCategory(list, targetId){
 /* === 選項彈窗（僅鍋燒系列顯示主食，其餘只有數量與備註） === */
 let currentItem = null;
 function openItemModal(item){
+  const chooseBtn = Array.from(document.querySelectorAll('.choose-btn'))
+    .find(btn => btn.dataset.name === item.name);
+  if (chooseBtn?.disabled) return;
+  if (chooseBtn) {chooseBtn.disabled = true; chooseBtn.textContent = '確認中...';}
   // 再次檢查是否售完（避免 race）
   checkSoldOutByName(item.name).then(sold=>{
     if (sold) {
@@ -328,6 +382,10 @@ function openItemModal(item){
     updatePmSubtotal();
 
     el('#pmAdd').onclick = async ()=>{
+      const addBtn = el('#pmAdd');
+      if (addBtn.disabled) return;
+      addBtn.disabled = true; addBtn.textContent = '加入中...';
+      try {
       const sold = await checkSoldOutByName(item.name);
       if (sold) { alert('此品項已售完'); refreshSheetMenu(true); return; }
       const qty    = Math.max(1, parseInt(qtyInput.value)||1);
@@ -335,10 +393,13 @@ function openItemModal(item){
       const remark = (el('#pmRemark')?.value || '').trim();
       addToCart({ item, qty, remark, staple, needStaple });
       closeItemModal();
+      } catch(err) { alert('無法確認商品狀態，請稍後重試。'); }
+      finally { addBtn.disabled = false; addBtn.textContent = '加入購物車'; }
     };
 
     el('#itemModal').classList.remove('hidden');
-  }).catch(() => alert('無法確認商品狀態，請稍後再試。'));
+  }).catch(() => alert('無法確認商品狀態，請稍後再試。'))
+    .finally(()=>{ if(chooseBtn){chooseBtn.disabled=false; chooseBtn.textContent='選擇';} });
 }
 function closeItemModal(){
   el('#itemModal')?.classList.add('hidden');
@@ -452,68 +513,40 @@ function generateSlots(dateObj = new Date()) {
   }
   return slots;
 }
-
 function fillPickupSelect() {
   const sel = el('#pickupSelect');
-  const hint = el('#pickupHint');
   const offMsg = el('#offHourMsg');
-
-  const now = new Date();
-  const isBusinessDay = BUSINESS.openDays.includes(now.getDay());
-
+  const previousValue = sel.value;
   sel.innerHTML = '';
+  state.slots.forEach(dt => {
+    const o = document.createElement('option');
+    o.value = dt.toISOString();
+    o.textContent = `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+    sel.appendChild(o);
+  });
+  const auto = document.createElement('option');
+  auto.value = '';
+  auto.textContent = '（不指定，系統自動安排最早時段）';
+  sel.insertBefore(auto, sel.firstChild);
+  sel.value = [...sel.options].some(o => o.value === previousValue) ? previousValue : '';
 
-  if (!isBusinessDay) {
-    // 非營業日：保留選單，但禁止操作
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = '今日非營業日';
-
-    sel.appendChild(option);
-    sel.disabled = true;
-
-    offMsg.textContent = '今日非營業日，每週二至週五營業。';
-    offMsg.classList.remove('hidden-imp');
-
-  } else if (state.slots.length === 0) {
-    // 營業日，但已經沒有可選時段
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = '今日已停止接單';
-
-    sel.appendChild(option);
-    sel.disabled = true;
-
-    offMsg.textContent = '今日已超過最後取餐時間 19:30。';
-    offMsg.classList.remove('hidden-imp');
-
-  } else {
-    // 正常營業日：顯示可預約時段
-    sel.disabled = false;
-
-    const auto = document.createElement('option');
-    auto.value = '';
-    auto.textContent = '不指定，系統自動安排最早時段';
-    sel.appendChild(auto);
-
-    state.slots.forEach(dt => {
-      const option = document.createElement('option');
-
-      option.value = dt.toISOString();
-      option.textContent =
-        `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
-
-      sel.appendChild(option);
-    });
-
-    sel.value = '';
-    offMsg.classList.add('hidden-imp');
+  const isBusinessDay = BUSINESS.openDays.includes(new Date().getDay());
+  const hasSlots = state.slots.length > 0;
+  sel.disabled = !hasSlots;
+  if (!hasSlots) {
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = isBusinessDay ? '今日已停止接單' : '今日非營業日';
+    sel.appendChild(opt);
   }
-
-  hint.textContent =
-    '每週二至週五，當日 00:00 開放預約；取餐時間 16:00–19:30。';
+  offMsg.classList.toggle('hidden-imp', hasSlots);
+  if (!hasSlots) {
+    offMsg.textContent = isBusinessDay
+      ? '今日已無可預約的取餐時段。'
+      : '今日非營業日；僅每週二至週五開放當日預約。';
+  }
 }
-
 function chooseEarliestSlot(now = new Date()) {
   return state.slots.find(s => s.getTime() >= now.getTime()) || null;
 }
@@ -525,6 +558,8 @@ const SOLDOUT_TTL_MS = 30 * 1000;
 async function fetchMenuStatus(force=false) {
   const now = Date.now();
   if (!force && now - MENU_CACHE.ts < SOLDOUT_TTL_MS) return MENU_CACHE;
+  if (menuFetchInFlight) return menuFetchInFlight;
+  menuFetchInFlight = (async () => {
   const url = `${ENDPOINT}?action=menu&apiKey=${encodeURIComponent(API_KEY)}&_=${now}`;
   const response = await fetch(url, {cache:'no-store'});
   if (!response.ok) throw new Error('菜單連線失敗');
@@ -542,8 +577,12 @@ async function fetchMenuStatus(force=false) {
     sortOrder: Number.isFinite(Number(it.sortOrder)) && it.sortOrder !== '' ? Number(it.sortOrder) : index
   })).filter(it => it.name && Number.isFinite(it.price) && it.price >= 0);
   const byName = new Map(items.map(it => [it.name,it]));
-  MENU_CACHE = { ts:now, items, byName };
+  MENU_CACHE = { ts:Date.now(), items, byName };
+  writeMenuCache(items);
   return MENU_CACHE;
+  })();
+  try { return await menuFetchInFlight; }
+  finally { menuFetchInFlight = null; }
 }
 
 function renderSheetMenu(items) {
@@ -565,20 +604,40 @@ function renderSheetMenu(items) {
   enforceSoldOutOnMenu();
 }
 
-async function refreshSheetMenu(force=false) {
-  try {
-    const {items} = await fetchMenuStatus(force);
-    renderSheetMenu(items);
-  } catch (err) {
-    console.error('讀取菜單失敗', err);
-    const message = el('#menuMessage');
-    if (message) {
-      message.textContent = '菜單讀取失敗，請重新整理頁面。';
-      message.classList.remove('hidden');
+async function refreshSheetMenu(force=false, {initial=false} = {}) {
+  if (menuRefreshInFlight) return menuRefreshInFlight;
+  menuRefreshInFlight = (async () => {
+    if (initial && !menuReady) {
+      showLoading('正在載入菜單...', '正在取得最新商品與售完資訊，請稍候');
+    } else if (!initial) {
+      showMenuSync('正在更新菜單...');
     }
-    // 無法取得最新菜單時，不繼續用過期商品接受選擇
-    document.querySelectorAll('.choose-btn').forEach(btn => btn.disabled = true);
-  }
+    try {
+      const {items} = await fetchMenuStatus(force);
+      renderSheetMenu(items);
+      menuReady = true;
+      if (initial) hideLoading();
+      else showMenuSync('菜單已更新');
+      return true;
+    } catch (err) {
+      console.error('讀取菜單失敗', err);
+      const message = el('#menuMessage');
+      if (message) {
+        message.textContent = '菜單更新失敗，請稍後重試。';
+        message.classList.remove('hidden');
+      }
+      // 網路中斷時禁止選購，避免依靠舊價格或售完狀態繼續點餐。
+      document.querySelectorAll('.choose-btn').forEach(btn => btn.disabled = true);
+      if (initial && !menuReady) {
+        showLoading('菜單載入失敗', '網路可能不穩定，請按下方按鈕重新載入。', {retry:true});
+      } else {
+        showMenuSync('菜單更新失敗，請稍後重試', 'error');
+      }
+      return false;
+    }
+  })();
+  try { return await menuRefreshInFlight; }
+  finally { menuRefreshInFlight = null; }
 }
 
 async function checkSoldOutByName(name) {
@@ -666,7 +725,8 @@ function hhmmFromISO(iso){
 async function onSubmitOrder(e) {
   e.preventDefault();
   const btn = el('#submitBtn');
-  const setBusy = b => { btn.disabled = b; btn.textContent = b ? '送出中…' : '送出訂單'; };
+  if (btn.disabled) return;
+  const setBusy = b => { btn.disabled = b; btn.innerHTML = b ? '<span class="button-wheel"></span>送出中…' : '送出訂單'; };
   const showErr = m => el('#formError').textContent = m;
   setBusy(true); showErr('');
 
@@ -703,6 +763,7 @@ async function onSubmitOrder(e) {
       return;
     }
 
+    showLoading('正在確認訂單...', '正在確認品項及建立訂單，請勿重複點擊。', {cancel:true});
     let pending = readPendingOrder();
     if (!pending) {
       // 下單前再查詢最新菜單：不接受售完、下架或價格已更新的商品
@@ -803,7 +864,7 @@ async function onSubmitOrder(e) {
 
   } catch (err) {
     el('#formError').textContent = '送單失敗：' + (err?.message || '請稍後再試');
-  } finally { setBusy(false); }
+  } finally { setBusy(false); hideLoading(); }
 }
 
 /* === 用餐方式切換（顯示外帶時段 / 內用桌號） === */
@@ -829,9 +890,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 頁面載入就預先建立彈窗（避免第一次動態建 DOM 的延遲）
   ensureItemModal();
   
-  // 以 Google Sheets 菜單為唯一顯示來源，不使用舊固定菜單
-  refreshSheetMenu(true);
+  // 同一個分頁剛讀過的菜單先顯示，後台再確認最新售完／價格。
+  const cachedMenu = readMenuCache();
+  if (cachedMenu) {
+    const items = cachedMenu.items;
+    MENU_CACHE = {ts:0, items, byName:new Map(items.map(item=>[item.name,item]))};
+    renderSheetMenu(items);
+    menuReady = true;
+    hideLoading();
+    showMenuSync('已顯示暫存菜單，正在確認最新資訊');
+  }
+  refreshSheetMenu(true, {initial:!cachedMenu});
   setInterval(() => refreshSheetMenu(true), SOLDOUT_TTL_MS);
+  el('#retryMenuBtn').addEventListener('click', ()=>refreshSheetMenu(true,{initial:true}));
+  el('#dismissOrderLoadingBtn').addEventListener('click', hideLoading);
 
   ensureCategoryAnchors();
   paintCategoryButtons();
