@@ -452,32 +452,68 @@ function generateSlots(dateObj = new Date()) {
   }
   return slots;
 }
+
 function fillPickupSelect() {
   const sel = el('#pickupSelect');
+  const hint = el('#pickupHint');
   const offMsg = el('#offHourMsg');
-  const previousValue = sel.value;
-  sel.innerHTML = '';
-  state.slots.forEach(dt => {
-    const o = document.createElement('option');
-    o.value = dt.toISOString();
-    o.textContent = `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
-    sel.appendChild(o);
-  });
-  const auto = document.createElement('option');
-  auto.value = '';
-  auto.textContent = '（不指定，系統自動安排最早時段）';
-  sel.insertBefore(auto, sel.firstChild);
-  sel.value = [...sel.options].some(o => o.value === previousValue) ? previousValue : '';
 
-  const isBusinessDay = BUSINESS.openDays.includes(new Date().getDay());
-  const hasSlots = state.slots.length > 0;
-  offMsg.classList.toggle('hidden-imp', hasSlots);
-  if (!hasSlots) {
-    offMsg.textContent = isBusinessDay
-      ? '今日已無可預約的取餐時段。'
-      : '今日非營業日；僅每週二至週五開放當日預約。';
+  const now = new Date();
+  const isBusinessDay = BUSINESS.openDays.includes(now.getDay());
+
+  sel.innerHTML = '';
+
+  if (!isBusinessDay) {
+    // 非營業日：保留選單，但禁止操作
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '今日非營業日';
+
+    sel.appendChild(option);
+    sel.disabled = true;
+
+    offMsg.textContent = '今日非營業日，每週二至週五營業。';
+    offMsg.classList.remove('hidden-imp');
+
+  } else if (state.slots.length === 0) {
+    // 營業日，但已經沒有可選時段
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '今日已停止接單';
+
+    sel.appendChild(option);
+    sel.disabled = true;
+
+    offMsg.textContent = '今日已超過最後取餐時間 19:30。';
+    offMsg.classList.remove('hidden-imp');
+
+  } else {
+    // 正常營業日：顯示可預約時段
+    sel.disabled = false;
+
+    const auto = document.createElement('option');
+    auto.value = '';
+    auto.textContent = '不指定，系統自動安排最早時段';
+    sel.appendChild(auto);
+
+    state.slots.forEach(dt => {
+      const option = document.createElement('option');
+
+      option.value = dt.toISOString();
+      option.textContent =
+        `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+
+      sel.appendChild(option);
+    });
+
+    sel.value = '';
+    offMsg.classList.add('hidden-imp');
   }
+
+  hint.textContent =
+    '每週二至週五，當日 00:00 開放預約；取餐時間 16:00–19:30。';
 }
+
 function chooseEarliestSlot(now = new Date()) {
   return state.slots.find(s => s.getTime() >= now.getTime()) || null;
 }
