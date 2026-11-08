@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>招金 線上點餐</title>
+  <title>招金鐵飯碗 線上點餐</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="color-scheme" content="light">
   <style>
@@ -74,7 +74,7 @@
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 bg-slate-900 text-white rounded-xl grid place-items-center text-lg font-bold select-none">招</div>
       <div>
-        <div class="text-xl font-semibold">招金 線上點餐</div>
+        <div class="text-xl font-semibold">招金鐵飯碗 線上點餐</div>
         <div class="text-xs text-slate-500">營業時間: 每週二至週五 16:00–19:30（當日 00:00 開放預約；每15分鐘為一時段）</div>
         <div class="text-xs text-slate-500">每人內用低消50元，禁帶外食</div>
       </div>
@@ -88,17 +88,11 @@
      class="sticky z-40 bg-white/90 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-2">
     <div class="flex gap-2 overflow-x-auto no-scrollbar">
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="hotpot" style="color:#242d47">鍋燒系列</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="full"   style="color:#c9141a">呷飽飽系列</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="soup"   style="color:#242d47">喝湯</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="donut"  style="color:#c9141a">呷甜</button>
-      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0"
-              data-cat="tea"    style="color:#242d47">喝茶</button>
-      
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0" data-cat="chicken" style="color:#242d47">雞肉類</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0" data-cat="pork" style="color:#c9141a">豬肉類</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0" data-cat="side" style="color:#242d47">單點</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0" data-cat="cold" style="color:#c9141a">涼拌小菜</button>
+      <button class="catbtn px-3 py-1.5 rounded-xl border border-slate-300 bg-white shrink-0" data-cat="soup" style="color:#242d47">湯品</button>
     </div>
   </div>
 </nav>
@@ -107,52 +101,27 @@
 
 <main class="mx-auto container-slim px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
   <section class="lg:col-span-2 space-y-10">
-    <!-- 鍋燒系列（類別 A 色） -->
-    <div class="cat-wrap cat-a">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold flex items-center gap-2">鍋燒系列</h2>
-      </div>
-      <div id="hotpotList" class="grid grid-cols-2 gap-4"></div>
+    <p id="menuMessage" class="text-sm text-slate-500">正在讀取最新菜單…</p>
+    <div class="cat-wrap cat-a" data-section="chicken">
+      <div class="cat-header"><span class="cat-swatch"></span><h2 class="text-lg font-semibold">雞肉類</h2></div>
+      <div id="chickenList" class="grid grid-cols-2 gap-4"></div>
     </div>
-
-    <!-- 呷飽飽系列（類別 B 色） -->
-    <div class="cat-wrap cat-b">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold">呷飽飽系列</h2>
-      </div>
-      <div id="fullList" class="grid grid-cols-2 gap-4"></div>
+    <div class="cat-wrap cat-b" data-section="pork">
+      <div class="cat-header"><span class="cat-swatch"></span><h2 class="text-lg font-semibold">豬肉類</h2></div>
+      <div id="porkList" class="grid grid-cols-2 gap-4"></div>
     </div>
-
-    <!-- 喝湯（類別 A 色） -->
-    <div class="cat-wrap cat-a">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold">喝湯</h2>
-      </div>
+    <div class="cat-wrap cat-a" data-section="side">
+      <div class="cat-header"><span class="cat-swatch"></span><h2 class="text-lg font-semibold">單點</h2></div>
+      <div id="sideList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+    <div class="cat-wrap cat-b" data-section="cold">
+      <div class="cat-header"><span class="cat-swatch"></span><h2 class="text-lg font-semibold">涼拌小菜</h2></div>
+      <div id="coldList" class="grid grid-cols-2 gap-4"></div>
+    </div>
+    <div class="cat-wrap cat-a" data-section="soup">
+      <div class="cat-header"><span class="cat-swatch"></span><h2 class="text-lg font-semibold">湯品</h2></div>
       <div id="soupList" class="grid grid-cols-2 gap-4"></div>
     </div>
-
-    <!-- 呷甜（類別 B 色） -->
-    <div class="cat-wrap cat-b">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold">呷甜（甜甜圈）</h2>
-      </div>
-      <div id="donutList" class="grid grid-cols-2 gap-4"></div>
-    </div>
-
-    <!-- 喝茶（類別 A 色） -->
-    <div class="cat-wrap cat-a">
-      <div class="cat-header">
-        <span class="cat-swatch"></span>
-        <h2 class="text-lg font-semibold">喝茶</h2>
-      </div>
-      <div id="teaList" class="grid grid-cols-2 gap-4"></div>
-    </div>
-
-    
   </section>
 
   <aside id="cart"
@@ -261,7 +230,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyltY90UDrOA6DbnIrPVrNMomb2H48OLrpUInfiwcjFNJ-lgBeEUQef9AQTwxv-VbCaIw/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwK6nYp0jKOSgDaWc3TQRNeFL1ADCX3OyqiJMA-K8XnjTvsEURixpMAofKbbnuzy-vELw/exec';
 const API_KEY  = 'zhaojin';
 
 /* === 工具 & 狀態 === */
@@ -289,60 +258,18 @@ const BUSINESS = {
   intervalMin: 15
 };
 
-/* === 鍋燒主食選項 === */
-const HOTPOT_STAPLES = ["意麵","雞絲","冬粉","泡麵","飯"];
-
-/* === 菜單 === */
-const MENU = {
-  hotpot: [
-    { id:"hp_orig",   name:"原味鍋燒",     price:80,  requireStaple:true },
-    { id:"hp_kimchi", name:"泡菜鍋燒",     price:85,  requireStaple:true },
-    { id:"hp_thai",   name:"泰式鍋燒",     price:95,  requireStaple:true },
-    { id:"hp_clam",   name:"蛤蜊爆棚鍋燒", price:150, requireStaple:true },
-    { id:"hp_shrimp", name:"有夠蝦鍋燒",   price:150, requireStaple:true },
-    { id:"hp_purine", name:"通痛風鍋燒",   price:170, requireStaple:true },
-  ],
-  full: [
-    { id:"full_minced_pork_rice", name:"懷舊肉燥飯",   price:35,  noStaple:true },
-    { id:"full_rice_noodle",      name:"古味炒米粉",   price:40,  noStaple:true },
-    { id:"full_kongrou",          name:"復刻爌肉飯",   price:70,  noStaple:true },
-    { id:"full_basil_pork",       name:"台式打拋豬",   price:70,  noStaple:true },
-    { id:"full_mixed_chicken",    name:"肉燥雞絲飯",   price:65,  noStaple:true },
-    { id:"full_thai_chicken",     name:"泰式雞絲飯",   price:60,  noStaple:true },
-    { id:"full_stir_chicken",     name:"香炒雞肉片飯", price:75,  noStaple:true },
-    { id:"full_curry",            name:"招金咖喱飯",   price:75,  noStaple:true },
-    { id:"full_fried_instant",    name:"炒泡麵",       price:75,  noStaple:true },
-    { id:"full_bbq_box",          name:"巴比Ｑ烤肉餐盒", price:85, noStaple:true },
-    { id:"full_greenonion_pork",  name:"蔥爆豬肉",     price:85,  noStaple:true },
-    { id:"full_pan_chicken_leg",  name:"香煎雞腿",     price:85,  noStaple:true },
-    { id:"full_chili_chicken",    name:"椒麻雞腿",     price:85,  noStaple:true },
-    { id:"full_pan_pork_chop",    name:"香煎排骨",     price:85,  noStaple:true },
-    { id:"full_fried_chicken_lu", name:"炸雞滷肉飯",   price:80,  noStaple:true },
-    { id:"full_crispy_chicken",   name:"香酥雞排飯",   price:70,  noStaple:true },
-  ],
-  soup: [
-    { id:"soup_egg",      name:"蛋花湯",       price:30, noStaple:true },
-    { id:"soup_meatball", name:"貢丸湯",       price:30, noStaple:true },
-    { id:"soup_seaweed",  name:"紫菜蛋花湯",   price:40, noStaple:true },
-    { id:"soup_clam",     name:"蛤仔湯",       price:40, noStaple:true },
-  ],
-  tea: [
-    { id:"tea_black",   name:"紅茶",   price:30, noStaple:true },
-    { id:"tea_winter",  name:"冬瓜茶", price:30, noStaple:true },
-  ],
-  donut: [
-    { id:"donut_orig",     name:"原味甜甜圈",     price:30, noStaple:true },
-    { id:"donut_peanut",   name:"花生甜甜圈",     price:40, noStaple:true },
-    { id:"donut_straw",    name:"草莓甜甜圈",     price:35, noStaple:true },
-    { id:"donut_cheese",   name:"起司甜甜圈",     price:45, noStaple:true },
-    { id:"donut_secret",   name:"隱藏版甜甜圈",   price:50, noStaple:true },
-    { id:"donut_garlic",   name:"蒜香甜甜圈",     price:35, noStaple:true },
-    { id:"donut_choco",    name:"巧克力甜甜圈",   price:35, noStaple:true },
-    { id:"donut_milk",     name:"奶酥甜甜圈",     price:35, noStaple:true },
-    { id:"donut_mochi",    name:"麻糬甜甜圈",     price:45, noStaple:true },
-    { id:"donut_taro",     name:"芋頭甜甜圈",     price:45, noStaple:true },
-  ],
-};
+/* === 菜單由 Google Sheets 的 menu 分頁即時讀取 === */
+const MENU_CATEGORIES = [
+  { key:'chicken', label:'雞肉類' },
+  { key:'pork', label:'豬肉類' },
+  { key:'side', label:'單點' },
+  { key:'cold', label:'涼拌小菜' },
+  { key:'soup', label:'湯品' }
+];
+const MENU = { chicken:[], pork:[], side:[], cold:[], soup:[] };
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
+  '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+})[ch]);
 
 /* === Render：分類卡片（保留結構與 id，不動你的流程） === */
 function renderCategory(list, targetId){
@@ -353,13 +280,13 @@ function renderCategory(list, targetId){
     card.innerHTML=`
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <h3 class="text-base lg:text-lg font-semibold truncate">${item.name}</h3>
+          <h3 class="text-base lg:text-lg font-semibold truncate">${escapeHtml(item.name)}</h3>
         </div>
         <div class="text-right item-price mono">${money(item.price)}</div>
       </div>
       <div class="mt-4 flex justify-end">
         <button class="choose-btn btn px-4 py-2 bg-slate-900 text-white hover:bg-slate-800"
-                data-name="${item.name}">
+                data-name="${escapeHtml(item.name)}">
           選擇
         </button>
       </div>`;
@@ -375,7 +302,7 @@ function openItemModal(item){
   checkSoldOutByName(item.name).then(sold=>{
     if (sold) {
       alert('此品項已售完');
-      enforceSoldOutOnMenu(true); // 立刻刷新按鈕狀態
+      refreshSheetMenu(true); // 立刻刷新按鈕狀態
       return;
     }
     currentItem = item;
@@ -384,16 +311,8 @@ function openItemModal(item){
 
     el('#pmTitle').textContent = item.name;
 
-    const stapleWrap = el('#pmStapleWrap');
-    const stapleSel  = el('#pmStaple');
-    const needStaple = !!item.requireStaple;
-    stapleWrap.style.display = needStaple ? '' : 'none';
-    stapleSel.innerHTML='';
-    if (needStaple) {
-      HOTPOT_STAPLES.forEach(s=>{
-        const o=document.createElement('option'); o.value=s; o.textContent=s; stapleSel.appendChild(o);
-      });
-    }
+    const needStaple = false; // 新菜單沒有鍋燒主食選擇
+    el('#pmStapleWrap').style.display = 'none';
 
     el('#pmRemark').value = '';
 
@@ -410,7 +329,7 @@ function openItemModal(item){
 
     el('#pmAdd').onclick = async ()=>{
       const sold = await checkSoldOutByName(item.name);
-      if (sold) { alert('此品項已售完'); enforceSoldOutOnMenu(true); return; }
+      if (sold) { alert('此品項已售完'); refreshSheetMenu(true); return; }
       const qty    = Math.max(1, parseInt(qtyInput.value)||1);
       const staple = needStaple ? el('#pmStaple').value : '';
       const remark = (el('#pmRemark')?.value || '').trim();
@@ -419,7 +338,7 @@ function openItemModal(item){
     };
 
     el('#itemModal').classList.remove('hidden');
-  });
+  }).catch(() => alert('無法確認商品狀態，請稍後再試。'));
 }
 function closeItemModal(){
   el('#itemModal')?.classList.add('hidden');
@@ -495,8 +414,8 @@ function renderCart(){
     div.innerHTML=`
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <div class="font-medium">${e.item.name}${staplePart}</div>
-          <div class="text-sm text-slate-700 mt-1">備註：${e.remark ? e.remark : '(無)'}</div>
+          <div class="font-medium">${escapeHtml(e.item.name)}${staplePart}</div>
+          <div class="text-sm text-slate-700 mt-1">備註：${e.remark ? escapeHtml(e.remark) : '(無)'}</div>
           <div class="text-sm text-slate-600 mt-1">
             數量 ×
             <input type="number" min="1" value="${e.qty}" class="lineQty w-16 text-center border border-slate-300 rounded-lg py-1 mx-1 bg-white text-slate-900">
@@ -563,80 +482,91 @@ function chooseEarliestSlot(now = new Date()) {
   return state.slots.find(s => s.getTime() >= now.getTime()) || null;
 }
 
-/* === Sold-out 狀態：從 GAS /menu 讀取並套用到按鈕 === */
-let SOLDOUT_CACHE = { ts: 0, byName: new Map() };
+/* === Google Sheets 菜單、售完與上下架狀態：每30秒同步 === */
+let MENU_CACHE = { ts:0, byName:new Map(), items:[] };
 const SOLDOUT_TTL_MS = 30 * 1000;
 
-async function fetchMenuStatus(force=false){
+async function fetchMenuStatus(force=false) {
   const now = Date.now();
-  if (!force && (now - SOLDOUT_CACHE.ts) < SOLDOUT_TTL_MS) return SOLDOUT_CACHE;
-  const url = `${ENDPOINT}?action=menu&_=${now}&apiKey=${API_KEY}`;
-  const r = await fetch(url);
-  const t = await r.text();
-  let d; try{ d = JSON.parse(t);}catch{ throw new Error('menu 回應格式錯誤'); }
-  if (!d.ok) throw new Error(d.error||'menu_failed');
-
-  const byName = new Map();
-  for(const it of d.items||[]){
-    if (it.name) byName.set(String(it.name), !!it.soldOut);
+  if (!force && now - MENU_CACHE.ts < SOLDOUT_TTL_MS) return MENU_CACHE;
+  const url = `${ENDPOINT}?action=menu&apiKey=${encodeURIComponent(API_KEY)}&_=${now}`;
+  const response = await fetch(url, {cache:'no-store'});
+  if (!response.ok) throw new Error('菜單連線失敗');
+  const data = await response.json();
+  if (!data.ok || !Array.isArray(data.items)) {
+    throw new Error(data.message || data.error || '讀取菜單失敗');
   }
-  SOLDOUT_CACHE = { ts: now, byName };
-  return SOLDOUT_CACHE;
+  const items = data.items.map((it, index) => ({
+    id: String(it.sku || it.name || ''),
+    name: String(it.name || '').trim(),
+    price: Number(it.price),
+    category: String(it.category || '').trim().toLowerCase(),
+    soldOut: it.soldOut === true || String(it.soldOut).toUpperCase() === 'TRUE',
+    available: it.available !== false && String(it.available).toUpperCase() !== 'FALSE',
+    sortOrder: Number.isFinite(Number(it.sortOrder)) && it.sortOrder !== '' ? Number(it.sortOrder) : index
+  })).filter(it => it.name && Number.isFinite(it.price) && it.price >= 0);
+  const byName = new Map(items.map(it => [it.name,it]));
+  MENU_CACHE = { ts:now, items, byName };
+  return MENU_CACHE;
 }
-async function isSoldOut(name){
-  const { byName } = await fetchMenuStatus(false);
-  return !!byName.get(name);
+
+function renderSheetMenu(items) {
+  for (const category of MENU_CATEGORIES) MENU[category.key] = [];
+  for (const item of items) {
+    if (MENU[item.category] && item.available) MENU[item.category].push(item);
+  }
+  for (const category of MENU_CATEGORIES) {
+    MENU[category.key].sort((a,b) => a.sortOrder - b.sortOrder);
+    const section = document.querySelector(`[data-section="${category.key}"]`);
+    if (section) section.classList.toggle('hidden', MENU[category.key].length === 0);
+    renderCategory(MENU[category.key], `#${category.key}List`);
+  }
+  const message = el('#menuMessage');
+  if (message) {
+    message.textContent = items.length ? '' : '目前沒有上架商品。';
+    message.classList.toggle('hidden', items.length > 0);
+  }
+  enforceSoldOutOnMenu();
 }
-async function checkSoldOutByName(name){ return isSoldOut(name); }
 
-/* 把售完狀態套用到「選擇」按鈕（不改你原本事件，只是 disabled + 徽章） */
-
-
-async function enforceSoldOutOnMenu(force = false) {
+async function refreshSheetMenu(force=false) {
   try {
-    const { byName, bySku } = await fetchMenuStatus(force);
-
-    document.querySelectorAll('.choose-btn').forEach(btn => {
-      const name = btn.dataset.name || '';
-      const sku  = btn.dataset.sku  || '';
-      const sold = sku ? !!bySku.get(sku) : !!byName.get(name);
-
-      const wrap = btn.parentElement; // <div class="mt-4 flex justify-end">...</div>
-      if (!wrap) return;
-
-      let soldPill = wrap.querySelector('.sold-pill');
-
-      if (sold) {
-        // 隱藏原本「選擇」按鈕
-        btn.classList.add('hidden');
-
-        // 若還沒有售完膠囊，建立一顆外觀與按鈕相近的「不可點」徽章
-        if (!soldPill) {
-          soldPill = document.createElement('span');
-          soldPill.className = [
-            'sold-pill',              // 供查找/移除
-            'inline-flex items-center justify-center',
-            'px-4 py-2',
-            'rounded-xl',
-            'border border-slate-300',
-            'bg-slate-100 text-slate-500',
-            'cursor-not-allowed select-none'
-          ].join(' ');
-          soldPill.textContent = '售完';
-          wrap.insertBefore(soldPill, btn); // 放在「選擇」左邊
-        }
-      } else {
-        // 可販售：顯示「選擇」，移除售完膠囊
-        btn.classList.remove('hidden');
-        if (soldPill) soldPill.remove();
-      }
-    });
+    const {items} = await fetchMenuStatus(force);
+    renderSheetMenu(items);
   } catch (err) {
-    console.warn('套用售完狀態失敗：', err);
+    console.error('讀取菜單失敗', err);
+    const message = el('#menuMessage');
+    if (message) {
+      message.textContent = '菜單讀取失敗，請重新整理頁面。';
+      message.classList.remove('hidden');
+    }
+    // 無法取得最新菜單時，不繼續用過期商品接受選擇
+    document.querySelectorAll('.choose-btn').forEach(btn => btn.disabled = true);
   }
 }
 
+async function checkSoldOutByName(name) {
+  const {byName} = await fetchMenuStatus(true);
+  const item = byName.get(name);
+  return !item || !item.available || item.soldOut;
+}
 
+function enforceSoldOutOnMenu() {
+  document.querySelectorAll('.choose-btn').forEach(btn => {
+    const item = MENU_CACHE.byName.get(btn.dataset.name || '');
+    const sold = !item || item.soldOut || !item.available;
+    btn.classList.toggle('hidden', sold);
+    const wrap = btn.parentElement;
+    if (!wrap) return;
+    let badge = wrap.querySelector('.sold-pill');
+    if (sold && !badge) {
+      badge = document.createElement('span');
+      badge.className = 'sold-pill inline-flex items-center justify-center px-4 py-2 rounded-xl border border-slate-300 bg-slate-100 text-slate-500';
+      badge.textContent = '售完';
+      wrap.insertBefore(badge, btn);
+    } else if (!sold && badge) badge.remove();
+  });
+}
 
 /* === Apps Script API：reserve + confirm + sync === */
 async function apiReserve(orderId, pickupAtHintISO, diningType, tableNo){
@@ -660,10 +590,30 @@ async function apiConfirm(order){
   return d;
 }
 async function apiSync(){
-  try {
-    await fetch(ENDPOINT, { method: 'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify({ apiKey: API_KEY, action: 'sync' }) });
-  } catch {}
+  const r=await fetch(ENDPOINT, {
+    method:'POST', headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({apiKey:API_KEY,action:'sync'})
+  });
+  return await r.json();
 }
+async function apiOrderStatus(orderId){
+  const r=await fetch(ENDPOINT, {
+    method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({apiKey:API_KEY,action:'status',orderId})
+  });
+  return await r.json();
+}
+const PENDING_KEY='zhaojin_pending_order_v2';
+function readPendingOrder(){
+  try {return JSON.parse(localStorage.getItem(PENDING_KEY)||'null');} catch {return null;}
+}
+function savePendingOrder(value){
+  try{localStorage.setItem(PENDING_KEY,JSON.stringify(value));}catch{}
+}
+function clearPendingOrder(){
+  try{localStorage.removeItem(PENDING_KEY);}catch{}
+}
+
 
 /* === 小工具：顯示 HH:mm === */
 function hhmmFromISO(iso){
@@ -685,84 +635,134 @@ async function onSubmitOrder(e) {
   setBusy(true); showErr('');
 
   try {
-    if (state.cart.length === 0) { showErr('購物車尚無商品。'); return; }
+    const hasPending = !!readPendingOrder();
+    if (!hasPending && state.cart.length === 0) { showErr('購物車尚無商品。'); return; }
     const name = el('#customerName').value.trim();
     const phone = el('#customerPhone').value.trim();
-    if (!name || !phone) { showErr('請完整填寫姓名與電話。'); return; }
+    if (!hasPending && (!name || !phone)) { showErr('請完整填寫姓名與電話。'); return; }
 
     const diningType = document.querySelector('input[name="diningType"]:checked')?.value || 'takeout';
     const tableNo = diningType === 'dinein' ? el('#tableNo').value.trim() : '';
-    if (diningType === 'dinein' && !tableNo) { showErr('請填寫桌號。'); return; }
+    if (!hasPending && diningType === 'dinein' && !tableNo) { showErr('請填寫桌號。'); return; }
 
     const userChosenISO = (diningType === 'takeout' && el('#pickupSelect').value) ? el('#pickupSelect').value : '';
     const autoSlot = (diningType === 'takeout' && !userChosenISO) ? chooseEarliestSlot() : null;
     const pickupAtHintISO = (userChosenISO || (autoSlot ? autoSlot.toISOString() : ''));
-    if (!BUSINESS.openDays.includes(new Date().getDay())) {
+    if (!hasPending && !BUSINESS.openDays.includes(new Date().getDay())) {
       showErr('今日非營業日，每週二至週五營業。'); return;
     }
-    if (diningType === 'takeout' && !pickupAtHintISO) {
+    if (!hasPending && diningType === 'takeout' && !pickupAtHintISO) {
       showErr('今日沒有可預約的取餐時段。'); return;
     }
     // 內用依原本桌號流程，但不得超過當日 19:30 再下單
     const closing = new Date();
     closing.setHours(BUSINESS.endHour, BUSINESS.endMinute, 0, 0);
-    if (new Date() > closing) { showErr('今日已停止接單。'); return; }
+    if (!hasPending && new Date() > closing) { showErr('今日已停止接單。'); return; }
 
     // 檢查取餐時間是否早於創建時間
     const createdAt = new Date();
     const selectedPickupTime = pickupAtHintISO ? new Date(pickupAtHintISO) : createdAt;
-    if (selectedPickupTime < createdAt) {
+    if (!hasPending && selectedPickupTime < createdAt) {
       showErr('取餐時間不能早於訂單創建時間。');
       return;
     }
 
-    const items = state.cart.map(e => {
-      const staplePart = e.needStaple ? `｜主食：${e.staple || '-'}` : '';
-      const remarkPart = e.remark ? `｜備註：${e.remark}` : '';
-      const nameWith = `${e.item.name}${staplePart}${remarkPart}`;
-      return { id: e.item.id, name: nameWith, price: e.item.price, qty: e.qty };
-    });
-    const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+    let pending = readPendingOrder();
+    if (!pending) {
+      // 下單前再查詢最新菜單：不接受售完、下架或價格已更新的商品
+      const latest = await fetchMenuStatus(true);
+      for (const entry of state.cart) {
+        const current = latest.byName.get(entry.item.name);
+        if (!current || !current.available || current.soldOut) {
+          showErr(`「${entry.item.name}」已售完或下架，請移除後再送單。`);
+          return;
+        }
+        if (current.price !== entry.item.price) {
+          showErr(`「${entry.item.name}」價格已更新為 ${money(current.price)}，請移除並重新加入購物車。`);
+          return;
+        }
+      }
+      const items = state.cart.map(e => {
+        const staplePart = e.needStaple ? `｜主食：${e.staple || '-'}` : '';
+        const remarkPart = e.remark ? `｜備註：${e.remark}` : '';
+        const nameWith = `${escapeHtml(e.item.name)}${staplePart}${remarkPart}`;
+        return { id: e.item.id, name: nameWith, price: e.item.price, qty: e.qty };
+      });
+      const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+      const orderId = (crypto?.randomUUID?.() || (Date.now()+'-'+Math.random().toString(16).slice(2)));
+      pending = {
+        order: {
+          orderId, customer: { name, phone }, items,
+          subtotal, total: subtotal, createdAt: createdAt.toISOString(),
+          source: 'zhaojin-web', diningType, tableNo: tableNo || null,
+          desiredPickupTime: diningType === 'takeout' ? pickupAtHintISO : null
+        },
+        pickupAtHintISO, diningType, tableNo, reservation: null
+      };
+      savePendingOrder(pending);
+    }
 
-    const orderId = (crypto?.randomUUID?.() || (Date.now()+'-'+Math.random().toString(16).slice(2)));
-    const order = {
-      orderId,
-      customer: { name, phone },
-      items, subtotal, total: subtotal,
-      createdAt: createdAt.toISOString(),
-      source: 'zhaojin-web',
-      diningType,
-      tableNo: tableNo || null,
-      desiredPickupTime: (diningType === 'takeout' ? (pickupAtHintISO || null) : null)
-    };
+    const order = pending.order;
+    // 對未完成訂單保留原 orderId，避免重複取號、重複建立訂單。
+    let status = await apiOrderStatus(order.orderId);
+    if (!status.ok) throw new Error(status.message || status.error || '查詢訂單失敗');
 
-    // A) reserve：外帶用顧客自選時段；內用不寫時間
-    const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
-    if (!res.ok) { showErr(mapApiError(res.error, res.message)); return; }
+    if (status.status === 'not_found' && !pending.reservation) {
+      const res = await apiReserve(order.orderId, pending.pickupAtHintISO,
+                                   pending.diningType, pending.tableNo);
+      if (!res.ok) {
+        if (res.error === 'paused' || res.error === 'closed_day' ||
+            res.error === 'closed_time' || res.error === 'pickup_time_passed') {
+          clearPendingOrder();
+        }
+        showErr(mapApiError(res.error, res.message));
+        return;
+      }
+      pending.reservation = res;
+      savePendingOrder(pending);
+      status = {status:'reserved'};
+    }
 
-    // 先完成 confirm，確認訂單已進入 queue，才顯示成功畫面。
-    const confirmed = await apiConfirm(order);
-    if (!confirmed || !confirmed.ok) {
-      showErr(mapApiError(confirmed?.error, confirmed?.message) + '（訂單尚未確認，請聯絡店家）');
+    if (status.status === 'reserved' || status.status === 'not_found') {
+      const confirmed = await apiConfirm(order);
+      if (!confirmed?.ok) {
+        showErr(mapApiError(confirmed?.error, confirmed?.message) +
+          '；訂單尚未完成，請按「送出訂單」重試，勿重新建立訂單。');
+        return;
+      }
+    }
+
+    // 同步後再查詢正式 order 表；僅有 queue 時不宣稱已完成。
+    try { await apiSync(); } catch (syncError) {
+      console.warn('訂單同步暫時失敗', syncError);
+    }
+    const finalStatus = await apiOrderStatus(order.orderId);
+    if (!finalStatus.ok || finalStatus.status !== 'committed') {
+      showErr('訂單已送至系統，但正式訂單尚未確認完成。請按「送出訂單」重試同步，勿重複下單。');
       return;
     }
 
-    // 成功畫面（共用一個 Modal，條件顯示）
+    const res = pending.reservation || {
+      pickupNo: finalStatus.pickupNo || status.pickupNo || '',
+      pickupTime: order.desiredPickupTime
+    };
+    // 如果頁面重整後回復，從後端 status 查詢取餐編號
+    if (!res.pickupNo) {
+      const reserved = await apiOrderStatus(order.orderId);
+      res.pickupNo = reserved.pickupNo || '';
+    }
     el('#pickupNoText').textContent = String(res.pickupNo ?? '');
-    if (diningType === 'takeout') {
+    if (order.diningType === 'takeout') {
       el('#successTakeoutTime').classList.remove('hidden');
       el('#successTable').classList.add('hidden');
-      el('#pickupTimeText').textContent = hhmmFromISO(res.pickupTime ?? pickupAtHintISO ?? '');
+      el('#pickupTimeText').textContent = hhmmFromISO(res.pickupTime || order.desiredPickupTime);
     } else {
       el('#successTakeoutTime').classList.add('hidden');
       el('#successTable').classList.remove('hidden');
-      el('#tableNoText').textContent = tableNo || '';
+      el('#tableNoText').textContent = order.tableNo || '';
     }
     el('#successModal').classList.remove('hidden');
-
-    // queue 已確認，背景同步到正式 order 表；若失敗仍留在 queue 等候重試
-    apiSync();
-
+    clearPendingOrder();
     state.cart = []; renderCart();
 
   } catch (err) {
@@ -793,19 +793,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 頁面載入就預先建立彈窗（避免第一次動態建 DOM 的延遲）
   ensureItemModal();
   
-  // 頁面載入就先把售完狀態拉回來快取（避免第一次點時才打 API）
-  fetchMenuStatus(true).catch(()=>{});
-
-
-  renderCategory(MENU.hotpot,'#hotpotList');
-  renderCategory(MENU.full,'#fullList');
-  renderCategory(MENU.soup,'#soupList');
-  renderCategory(MENU.donut,'#donutList');
-  renderCategory(MENU.tea,'#teaList');
-  
-
-  // 初始套用一次售完狀態，之後每 30 秒刷新一次
-  (async ()=>{ await enforceSoldOutOnMenu(true); setInterval(()=> enforceSoldOutOnMenu(false), SOLDOUT_TTL_MS); })();
+  // 以 Google Sheets 菜單為唯一顯示來源，不使用舊固定菜單
+  refreshSheetMenu(true);
+  setInterval(() => refreshSheetMenu(true), SOLDOUT_TTL_MS);
 
   ensureCategoryAnchors();
   paintCategoryButtons();
@@ -833,12 +823,11 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 /* ===== 分類快速選擇：錨點、捲動、著色、選中狀態 ===== */
 const CATEGORY_SECTIONS = [
-  { key:'hotpot', label:'鍋燒系列', listSel:'#hotpotList', color:'#242d47' },
-  { key:'full',   label:'呷飽飽系列', listSel:'#fullList', color:'#c9141a' },
-  { key:'soup',   label:'喝湯',       listSel:'#soupList',  color:'#242d47' },
-  { key:'donut',  label:'呷甜',       listSel:'#donutList', color:'#c9141a' },
-  { key:'tea',    label:'喝茶',       listSel:'#teaList',   color:'#242d47' },
-  
+  { key:'chicken', label:'雞肉類', listSel:'#chickenList', color:'#242d47' },
+  { key:'pork', label:'豬肉類', listSel:'#porkList', color:'#c9141a' },
+  { key:'side', label:'單點', listSel:'#sideList', color:'#242d47' },
+  { key:'cold', label:'涼拌小菜', listSel:'#coldList', color:'#c9141a' },
+  { key:'soup', label:'湯品', listSel:'#soupList', color:'#242d47' },
 ];
 
 /* 幫每個分類標題加錨點（不改你原 HTML 結構） */
