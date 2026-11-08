@@ -84,13 +84,15 @@
   </div>
 </div>
 <div id="menuSyncIndicator" class="fixed bottom-4 right-4 z-20 hidden rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-lg" role="status" aria-live="polite"></div>
+<div id="testModeBanner" class="bg-amber-100 border-b border-amber-300 text-amber-900 text-center text-sm font-semibold px-3 py-2">測試模式：暫時開放非營業日下單，測試訂單仍會寫入 Google Sheets</div>
 <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 bg-slate-900 text-white rounded-xl grid place-items-center text-lg font-bold select-none">招</div>
       <div>
         <div class="text-xl font-semibold">招金鐵飯碗 線上點餐</div>
-        <div class="text-xs text-slate-500">營業時間: 每週二至週五 16:00–19:30 </div>
+        <div class="text-xs text-slate-500">營業時間: 每週二至週五 16:00–19:30（當日 00:00 開放預約；每15分鐘為一時段）</div>
+        <div class="text-xs text-slate-500">每人內用低消50元，禁帶外食</div>
       </div>
     </div>
     <a href="#cart" class="btn px-3 py-2 border border-slate-300 hover:bg-slate-100">購物車</a>
@@ -244,8 +246,12 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwK6nYp0jKOSgDaWc3TQRNeFL1ADCX3OyqiJMA-K8XnjTvsEURixpMAofKbbnuzy-vELw/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzl187WwDH7Ujs3GuUy93ksj4GoBjTtRFUlprRdBq-SAocYSZGpgNumSP4sg2tRbfI3vQ/exec';
 const API_KEY  = 'zhaojin';
+
+// 測試版：true = 暫時忽略星期限制；false = 恢復週二至週五營業。
+// 仍只允許當日16:00至19:30取餐，19:30後停止接單。
+const TEST_IGNORE_BUSINESS_DAYS = true;
 
 /* === 工具 & 狀態 === */
 const el = s => document.querySelector(s);
@@ -498,7 +504,7 @@ function renderCart(){
 /* === 外帶：僅營業日當日 00:00 起，16:00–19:30 每 15 分鐘可取餐 === */
 function generateSlots(dateObj = new Date()) {
   const now = new Date();
-  if (!BUSINESS.openDays.includes(dateObj.getDay())) return [];
+  if (!TEST_IGNORE_BUSINESS_DAYS && !BUSINESS.openDays.includes(dateObj.getDay())) return [];
   // 不開放跨日預約
   if (dateObj.toDateString() !== now.toDateString()) return [];
 
@@ -529,7 +535,11 @@ function fillPickupSelect() {
   sel.insertBefore(auto, sel.firstChild);
   sel.value = [...sel.options].some(o => o.value === previousValue) ? previousValue : '';
 
-  const isBusinessDay = BUSINESS.openDays.includes(new Date().getDay());
+  const isBusinessDay = TEST_IGNORE_BUSINESS_DAYS || BUSINESS.openDays.includes(new Date().getDay());
+  const pickupHint = el('#pickupHint');
+  if (pickupHint) pickupHint.textContent = TEST_IGNORE_BUSINESS_DAYS
+    ? '測試模式：今日可選16:00–19:30的未過期時段（每15分鐘）。'
+    : '每週二至週五，當日00:00開放預約；取餐16:00–19:30。';
   const hasSlots = state.slots.length > 0;
   sel.disabled = !hasSlots;
   if (!hasSlots) {
@@ -743,7 +753,7 @@ async function onSubmitOrder(e) {
     const userChosenISO = (diningType === 'takeout' && el('#pickupSelect').value) ? el('#pickupSelect').value : '';
     const autoSlot = (diningType === 'takeout' && !userChosenISO) ? chooseEarliestSlot() : null;
     const pickupAtHintISO = (userChosenISO || (autoSlot ? autoSlot.toISOString() : ''));
-    if (!hasPending && !BUSINESS.openDays.includes(new Date().getDay())) {
+    if (!hasPending && !TEST_IGNORE_BUSINESS_DAYS && !BUSINESS.openDays.includes(new Date().getDay())) {
       showErr('今日非營業日，每週二至週五營業。'); return;
     }
     if (!hasPending && diningType === 'takeout' && !pickupAtHintISO) {
@@ -886,6 +896,7 @@ function initSlots(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
+  el('#testModeBanner').classList.toggle('hidden', !TEST_IGNORE_BUSINESS_DAYS);
   // 頁面載入就預先建立彈窗（避免第一次動態建 DOM 的延遲）
   ensureItemModal();
   
