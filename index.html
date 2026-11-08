@@ -75,7 +75,7 @@
       <div class="w-10 h-10 bg-slate-900 text-white rounded-xl grid place-items-center text-lg font-bold select-none">招</div>
       <div>
         <div class="text-xl font-semibold">招金 線上點餐</div>
-        <div class="text-xs text-slate-500">營業時間: 每週二、三、四 16:00-20:00（每15分鐘為一時段）</div>
+        <div class="text-xs text-slate-500">營業時間: 每週二至週五 16:00–19:30（當日 00:00 開放預約；每15分鐘為一時段）</div>
         <div class="text-xs text-slate-500">每人內用低消50元，禁帶外食</div>
       </div>
     </div>
@@ -192,7 +192,7 @@
           <select id="pickupSelect"
                   class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white text-slate-900">
           </select>
-          <p id="pickupHint" class="text-xs text-slate-500 mt-1">營業時段：16:00–20:00；每 15 分鐘一個時段。</p>
+          <p id="pickupHint" class="text-xs text-slate-500 mt-1">營業時段：每週二至週五 16:00–19:30；當日 00:00 開放預約。</p>
           <p id="offHourMsg" class="text-sm text-amber-700 mt-2 hidden-imp"></p>
         </div>
 
@@ -261,7 +261,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxTtrXkCFN2jQjCTVOW1AfxUEKC2CbhN8Kg098Clj29S0TVfL0dpzdDH1RV4BS3xm4WLQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyltY90UDrOA6DbnIrPVrNMomb2H48OLrpUInfiwcjFNJ-lgBeEUQef9AQTwxv-VbCaIw/exec';
 const API_KEY  = 'zhaojin';
 
 /* === 工具 & 狀態 === */
@@ -274,11 +274,20 @@ const state = { cart: [], slots: [] };
 function mapApiError(errCode, serverMessage){
   const code = String(errCode || '').toLowerCase();
   if (code === 'paused') return '目前商家停止接單';
+  if (code === 'closed_day') return '今日非營業日，每週二至週五營業。';
+  if (code === 'closed_time') return '今日已停止接單。';
   return serverMessage || '送單失敗，請稍後再試';
 }
 
 /* === 參數：營業時間 === */
-const BUSINESS = { startHour:16, endHour:20, intervalMin:15 };
+const BUSINESS = {
+  openDays: [2, 3, 4, 5], // JS: 星期日=0，星期二=2
+  startHour: 16,
+  startMinute: 0,
+  endHour: 19,
+  endMinute: 30,
+  intervalMin: 15
+};
 
 /* === 鍋燒主食選項 === */
 const HOTPOT_STAPLES = ["意麵","雞絲","冬粉","泡麵","飯"];
@@ -507,54 +516,51 @@ function renderCart(){
   el('#cartTotal').textContent=money(cartTotal());
 }
 
-/* === 外帶：時段產生（16:00-20:00，每15分） === */
-function generateSlots(dateObj = new Date()){
-  const y = dateObj.getFullYear();
-  const m = dateObj.getMonth();
-  const d = dateObj.getDate();
+/* === 外帶：僅營業日當日 00:00 起，16:00–19:30 每 15 分鐘可取餐 === */
+function generateSlots(dateObj = new Date()) {
+  const now = new Date();
+  if (!BUSINESS.openDays.includes(dateObj.getDay())) return [];
+  // 不開放跨日預約
+  if (dateObj.toDateString() !== now.toDateString()) return [];
+
+  const y = dateObj.getFullYear(), m = dateObj.getMonth(), d = dateObj.getDate();
+  const start = new Date(y, m, d, BUSINESS.startHour, BUSINESS.startMinute);
+  const end = new Date(y, m, d, BUSINESS.endHour, BUSINESS.endMinute);
   const slots = [];
-  const start = new Date(y, m, d, BUSINESS.startHour, 0, 0);
-  const end   = new Date(y, m, d, BUSINESS.endHour, 0, 0);
-  for (let t = new Date(start); t <= end; t = new Date(t.getTime() + BUSINESS.intervalMin*60000)) {
-    slots.push(new Date(t));
+  const interval = BUSINESS.intervalMin * 60000;
+  for (let ms = start.getTime(); ms <= end.getTime(); ms += interval) {
+    if (ms >= now.getTime()) slots.push(new Date(ms));
   }
   return slots;
 }
-function fillPickupSelect(){
+function fillPickupSelect() {
   const sel = el('#pickupSelect');
   const offMsg = el('#offHourMsg');
+  const previousValue = sel.value;
   sel.innerHTML = '';
-  state.slots.forEach(dt=>{
-    const hh = pad2(dt.getHours());
-    const mm = pad2(dt.getMinutes());
+  state.slots.forEach(dt => {
     const o = document.createElement('option');
-    o.value = dt.toISOString(); // 後端會以 ISO 解析
-    o.textContent = `${hh}:${mm}`;
+    o.value = dt.toISOString();
+    o.textContent = `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
     sel.appendChild(o);
   });
   const auto = document.createElement('option');
   auto.value = '';
   auto.textContent = '（不指定，系統自動安排最早時段）';
   sel.insertBefore(auto, sel.firstChild);
-  sel.value = '';
+  sel.value = [...sel.options].some(o => o.value === previousValue) ? previousValue : '';
 
-  // 是否目前不在可取時段
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.startHour, 0, 0);
-  const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), BUSINESS.endHour, 0, 0);
-  const offHour = now < start || now > end;
-  offMsg.classList.toggle('hidden-imp', !offHour);
-}
-function roundUpTo15min(date){
-  const ms = BUSINESS.intervalMin*60000;
-  return new Date(Math.ceil(date.getTime()/ms)*ms);
-}
-function chooseEarliestSlot(now = new Date()){
-  const earliest = roundUpTo15min(new Date(now.getTime() + BUSINESS.intervalMin*60000));
-  for (const s of state.slots){
-    if (s.getTime() >= earliest.getTime()) return s;
+  const isBusinessDay = BUSINESS.openDays.includes(new Date().getDay());
+  const hasSlots = state.slots.length > 0;
+  offMsg.classList.toggle('hidden-imp', hasSlots);
+  if (!hasSlots) {
+    offMsg.textContent = isBusinessDay
+      ? '今日已無可預約的取餐時段。'
+      : '今日非營業日；僅每週二至週五開放當日預約。';
   }
-  return state.slots[state.slots.length - 1] || null;
+}
+function chooseEarliestSlot(now = new Date()) {
+  return state.slots.find(s => s.getTime() >= now.getTime()) || null;
 }
 
 /* === Sold-out 狀態：從 GAS /menu 讀取並套用到按鈕 === */
@@ -662,8 +668,11 @@ async function apiSync(){
 /* === 小工具：顯示 HH:mm === */
 function hhmmFromISO(iso){
   if (!iso) return '';
+  // GAS 回傳台灣時間字串 yyyy/MM/dd HH:mm:ss；直接抓 HH:mm 避免不同瀏覽器解析差異
+  const taiwanText = String(iso).match(/^\d{4}\/\d{2}\/\d{2}\s+(\d{2}:\d{2})/);
+  if (taiwanText) return taiwanText[1];
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
+  if (isNaN(d.getTime())) return String(iso);
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
@@ -688,6 +697,16 @@ async function onSubmitOrder(e) {
     const userChosenISO = (diningType === 'takeout' && el('#pickupSelect').value) ? el('#pickupSelect').value : '';
     const autoSlot = (diningType === 'takeout' && !userChosenISO) ? chooseEarliestSlot() : null;
     const pickupAtHintISO = (userChosenISO || (autoSlot ? autoSlot.toISOString() : ''));
+    if (!BUSINESS.openDays.includes(new Date().getDay())) {
+      showErr('今日非營業日，每週二至週五營業。'); return;
+    }
+    if (diningType === 'takeout' && !pickupAtHintISO) {
+      showErr('今日沒有可預約的取餐時段。'); return;
+    }
+    // 內用依原本桌號流程，但不得超過當日 19:30 再下單
+    const closing = new Date();
+    closing.setHours(BUSINESS.endHour, BUSINESS.endMinute, 0, 0);
+    if (new Date() > closing) { showErr('今日已停止接單。'); return; }
 
     // 檢查取餐時間是否早於創建時間
     const createdAt = new Date();
@@ -721,6 +740,13 @@ async function onSubmitOrder(e) {
     const res = await apiReserve(orderId, pickupAtHintISO, diningType, tableNo);
     if (!res.ok) { showErr(mapApiError(res.error, res.message)); return; }
 
+    // 先完成 confirm，確認訂單已進入 queue，才顯示成功畫面。
+    const confirmed = await apiConfirm(order);
+    if (!confirmed || !confirmed.ok) {
+      showErr(mapApiError(confirmed?.error, confirmed?.message) + '（訂單尚未確認，請聯絡店家）');
+      return;
+    }
+
     // 成功畫面（共用一個 Modal，條件顯示）
     el('#pickupNoText').textContent = String(res.pickupNo ?? '');
     if (diningType === 'takeout') {
@@ -734,13 +760,8 @@ async function onSubmitOrder(e) {
     }
     el('#successModal').classList.remove('hidden');
 
-    // B) 背景 confirm → 成功後再 sync
-    (async () => {
-      try {
-        const c = await apiConfirm(order);
-        if (c && c.ok) { apiSync(); }
-      } catch (_) {}
-    })();
+    // queue 已確認，背景同步到正式 order 表；若失敗仍留在 queue 等候重試
+    apiSync();
 
     state.cart = []; renderCart();
 
