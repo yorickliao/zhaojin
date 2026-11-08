@@ -246,7 +246,7 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzl187WwDH7Ujs3GuUy93ksj4GoBjTtRFUlprRdBq-SAocYSZGpgNumSP4sg2tRbfI3vQ/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-danYakeHrifM5rHqwDHgcLlW0QT89v_Tvrpwz76vr5kogxF0DpxJmfm6i_KEUPfqMA/exec';
 const API_KEY  = 'zhaojin';
 
 // 測試版：true = 暫時忽略星期限制；false = 恢復週二至週五營業。
@@ -707,6 +707,16 @@ async function apiOrderStatus(orderId){
   });
   return await r.json();
 }
+async function apiFastSubmit(order) {
+  const r = await fetch(ENDPOINT, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({apiKey:API_KEY,action:'submit_order',order})
+  });
+  const t = await r.text();
+  try { return JSON.parse(t); }
+  catch { throw new Error('伺服器回應格式錯誤，請以原訂單重試。'); }
+}
 const PENDING_KEY='zhaojin_pending_order_v2';
 function readPendingOrder(){
   try {return JSON.parse(localStorage.getItem(PENDING_KEY)||'null');} catch {return null;}
@@ -772,26 +782,14 @@ async function onSubmitOrder(e) {
       return;
     }
 
-    showLoading('正在確認訂單...', '正在確認品項及建立訂單，請勿重複點擊。', {cancel:true});
+    showLoading('正在建立訂單...', '確認商品與寫入訂單中，請勿重複點擊或關閉網頁。', {cancel:false});
     let pending = readPendingOrder();
     if (!pending) {
-      // 下單前再查詢最新菜單：不接受售完、下架或價格已更新的商品
-      const latest = await fetchMenuStatus(true);
-      for (const entry of state.cart) {
-        const current = latest.byName.get(entry.item.name);
-        if (!current || !current.available || current.soldOut) {
-          showErr(`「${entry.item.name}」已售完或下架，請移除後再送單。`);
-          return;
-        }
-        if (current.price !== entry.item.price) {
-          showErr(`「${entry.item.name}」價格已更新為 ${money(current.price)}，請移除並重新加入購物車。`);
-          return;
-        }
-      }
+      // 下單驗證統一交由 GAS submit_order，避免額外 GET menu 請求。
       const items = state.cart.map(e => {
         const staplePart = e.needStaple ? `｜主食：${e.staple || '-'}` : '';
         const remarkPart = e.remark ? `｜備註：${e.remark}` : '';
-        const nameWith = `${escapeHtml(e.item.name)}${staplePart}${remarkPart}`;
+        const nameWith = `${e.item.name}${staplePart}${remarkPart}`;
         return { id: e.item.id, name: nameWith, price: e.item.price, qty: e.qty };
       });
       const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -809,53 +807,13 @@ async function onSubmitOrder(e) {
     }
 
     const order = pending.order;
-    // 對未完成訂單保留原 orderId，避免重複取號、重複建立訂單。
-    let status = await apiOrderStatus(order.orderId);
-    if (!status.ok) throw new Error(status.message || status.error || '查詢訂單失敗');
-
-    if (status.status === 'not_found' && !pending.reservation) {
-      const res = await apiReserve(order.orderId, pending.pickupAtHintISO,
-                                   pending.diningType, pending.tableNo);
-      if (!res.ok) {
-        if (res.error === 'paused' || res.error === 'closed_day' ||
-            res.error === 'closed_time' || res.error === 'pickup_time_passed') {
-          clearPendingOrder();
-        }
-        showErr(mapApiError(res.error, res.message));
-        return;
-      }
-      pending.reservation = res;
-      savePendingOrder(pending);
-      status = {status:'reserved'};
-    }
-
-    if (status.status === 'reserved' || status.status === 'not_found') {
-      const confirmed = await apiConfirm(order);
-      if (!confirmed?.ok) {
-        showErr(mapApiError(confirmed?.error, confirmed?.message) +
-          '；訂單尚未完成，請按「送出訂單」重試，勿重新建立訂單。');
-        return;
-      }
-    }
-
-    // 同步後再查詢正式 order 表；僅有 queue 時不宣稱已完成。
-    try { await apiSync(); } catch (syncError) {
-      console.warn('訂單同步暫時失敗', syncError);
-    }
-    const finalStatus = await apiOrderStatus(order.orderId);
-    if (!finalStatus.ok || finalStatus.status !== 'committed') {
-      showErr('訂單已送至系統，但正式訂單尚未確認完成。請按「送出訂單」重試同步，勿重複下單。');
+    // 單次 API：GAS 直接確認寫入正式 order，成功才顯示號碼。
+    // 任何連線中斷保留相同 orderId，重新點擊不會生成另一筆。
+    const res = await apiFastSubmit(order);
+    if(!res.ok || res.status !== 'committed') {
+      showErr(mapApiError(res.error,res.message) +
+        '；如果已送出但畫面未完成，請勿清除購物車，直接按送出重試。');
       return;
-    }
-
-    const res = pending.reservation || {
-      pickupNo: finalStatus.pickupNo || status.pickupNo || '',
-      pickupTime: order.desiredPickupTime
-    };
-    // 如果頁面重整後回復，從後端 status 查詢取餐編號
-    if (!res.pickupNo) {
-      const reserved = await apiOrderStatus(order.orderId);
-      res.pickupNo = reserved.pickupNo || '';
     }
     el('#pickupNoText').textContent = String(res.pickupNo ?? '');
     if (order.diningType === 'takeout') {
