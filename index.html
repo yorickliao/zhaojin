@@ -84,7 +84,6 @@
   </div>
 </div>
 <div id="menuSyncIndicator" class="fixed bottom-4 right-4 z-20 hidden rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-lg" role="status" aria-live="polite"></div>
-<div id="testModeBanner" class="bg-amber-100 border-b border-amber-300 text-amber-900 text-center text-sm font-semibold px-3 py-2">測試模式：暫時開放非營業日下單，測試訂單仍會寫入 Google Sheets</div>
 <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
   <div class="mx-auto container-slim px-4 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
@@ -246,12 +245,12 @@
 
 <script>
 /* === 設定（請替換為你的 GAS 部署網址 / API Key）=== */
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-danYakeHrifM5rHqwDHgcLlW0QT89v_Tvrpwz76vr5kogxF0DpxJmfm6i_KEUPfqMA/exec';
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwtbWiGbtR2Z1sb6c3hd6T4ScSrVNXHPj2ONKeHMOwBz2dUjPZpApuZxXRupHTRD-2wDw/exec';
 const API_KEY  = 'zhaojin';
 
 // 測試版：true = 暫時忽略星期限制；false = 恢復週二至週五營業。
 // 仍只允許當日16:00至19:30取餐，19:30後停止接單。
-const TEST_IGNORE_BUSINESS_DAYS = true;
+const TEST_IGNORE_BUSINESS_DAYS = false;
 
 /* === 工具 & 狀態 === */
 const el = s => document.querySelector(s);
@@ -854,7 +853,6 @@ function initSlots(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   el('#year').textContent=new Date().getFullYear();
-  el('#testModeBanner').classList.toggle('hidden', !TEST_IGNORE_BUSINESS_DAYS);
   // 頁面載入就預先建立彈窗（避免第一次動態建 DOM 的延遲）
   ensureItemModal();
   
